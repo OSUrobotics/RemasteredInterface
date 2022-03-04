@@ -5,7 +5,8 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg, NavigationTool
 from matplotlib.figure import Figure
 import math
 from PyQt5 import QtCore, QtGui, QtWidgets
-from PyQt5.QtWidgets import QWidget, QApplication, QPushButton, QGridLayout, QLabel, QCheckBox
+from PyQt5.QtWidgets import QComboBox, QWidget, QApplication, QPushButton, QGridLayout, QLabel, QCheckBox
+from PyQt5 import QtCore, QtGui
 import sys
 import numpy as np
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
@@ -21,16 +22,41 @@ arrayY = [3, 4, 5 , 1 , 6 , 9,  4 ,6]
 
 class CanvasFigure(FigureCanvasQTAgg):
     def __init__(self, parent=None, width=4, height=4, dpi=100):
-        
         self.fig = Figure(figsize=(width, height), dpi=dpi)
         super(CanvasFigure, self).__init__(self.fig)
         self.axes = self.fig.add_subplot(111)
-        
-        
+              
 
-     
-   
 
+class DifferentWindows(QtWidgets.QMainWindow):
+    def __init__(self, p, t, status = [], index = -1, num = 0 ):
+        super(QWidget, self).__init__()
+        self.showMaximized()
+        self.setWindowTitle('Distance Graph')
+        w = Wrapper(p, t, status, index, num)
+        self.setCentralWidget(w)
+
+class Wrapper(QtWidgets.QWidget):
+    def __init__(self, p, t, status, index, num):
+        super(QWidget, self).__init__()
+        layout = QtWidgets.QVBoxLayout(self) 
+        layout1 = QtWidgets.QHBoxLayout(self)
+
+        self.setLayout(layout)
+        layout.addStretch()
+        layout.addLayout(layout1)
+        layout.addStretch()
+        if (t == 0):
+            self.g = GraphDistance(p, index, num)
+        if (t == 1):
+            self.g = Graph(p, index, num)
+        if (t == 2):
+            print("sdfdsf")
+            self.g = graphImage(p, index, status,  num)
+        layout1.addStretch()
+        layout1.addWidget(self.g)
+        layout1.addStretch()
+        
 
 class GraphDistance(QtWidgets.QWidget):
     def __init__(self, p, index, num):
@@ -42,19 +68,21 @@ class GraphDistance(QtWidgets.QWidget):
             self.width = 1000
         elif num == 2:
             self.height = 550
-            self.width = 600 
+            self.width = 600
+        elif num == 0:
+            self.width = 1200
+            self.height = 800 
         else:
             self.width = 500
             self.height = 400
+        
         self.setFixedWidth(self.width)
         self.setFixedHeight(self.height)
         button = QPushButton()
         button.setText("Export Path")
-        button.clicked.connect(self.dialog)
+        
         button.setFixedWidth(120)
         button.setFixedHeight(30)
-        self.lbl = QLabel('', self)
-        self.lbl.setFixedHeight(30)
         self.layout = QtWidgets.QVBoxLayout(self) 
         self.layout1 =  QtWidgets.QHBoxLayout(self)
         buttonBack = QPushButton()
@@ -62,15 +90,22 @@ class GraphDistance(QtWidgets.QWidget):
         buttonBack.setStyleSheet("background-color: red;")
         buttonBack.setFixedWidth(120)
         buttonBack.setFixedHeight(30)
+        buttonNewWindow = QPushButton()
+        buttonNewWindow.setText("New Window")
+        buttonNewWindow.setFixedWidth(120)
+        buttonNewWindow.setFixedHeight(30)
         buttonBack.clicked.connect(lambda:self.parent.goBackToSelection(self.index))
+        buttonNewWindow.clicked.connect(lambda:self.openInNewWindow())
         self.canvas = CanvasFigure(self, width=5, height=4, dpi=100)
         self.canvas.fig.suptitle('Distance Graph', fontsize=14)
-        self.layout1.addWidget(button)
-        self.layout1.addWidget(self.lbl)
-        self.layout.addLayout(self.layout1)
+        #self.layout1.addWidget(button)
+        if num != 0:
+            self.layout.addLayout(self.layout1)
         self.layout.addWidget(self.canvas)
-        self.layout.addWidget(buttonBack)
         self.layout1.addStretch()
+        self.layout1.addWidget(buttonNewWindow)
+        self.layout1.addWidget(buttonBack)
+        
         self.setLayout(self.layout)
         n_data = 50
         self.xdata = list(range(n_data))
@@ -85,11 +120,7 @@ class GraphDistance(QtWidgets.QWidget):
         self.timer.start()
 
     
-    def dialog(self):
-        file , check = QtWidgets.QFileDialog.getOpenFileName(None, "QFileDialog.getOpenFileName()",
-                                                "", "All Files (*)")
-        if check:
-            self.lbl.setText(file)
+   
 
 
     def update_plot(self):
@@ -97,6 +128,10 @@ class GraphDistance(QtWidgets.QWidget):
         self.canvas.axes.cla()  
         self.canvas.axes.plot(self.xdata, self.ydata, 'b')
         self.canvas.draw()
+
+
+    def openInNewWindow(self):
+        self.w1 = DifferentWindows(self.parent, 0)
 
 
 class Graph(QtWidgets.QWidget):
@@ -110,6 +145,9 @@ class Graph(QtWidgets.QWidget):
         elif num == 2:
             self.height = 550
             self.width = 600 
+        elif num == 0:
+            self.width = 1200
+            self.height = 800 
         else:
             self.width = 500
             self.height = 400
@@ -117,11 +155,10 @@ class Graph(QtWidgets.QWidget):
         self.setFixedHeight(self.height)
         button = QPushButton()
         button.setText("Export Path")
-        button.clicked.connect(self.dialog)
+       
         button.setFixedWidth(120)
         button.setFixedHeight(30)
-        self.lbl = QLabel('', self)
-        self.lbl.setFixedHeight(30)
+       
         self.layout = QtWidgets.QVBoxLayout(self) 
         self.layout1 =  QtWidgets.QHBoxLayout(self)
         buttonBack = QPushButton()
@@ -129,34 +166,45 @@ class Graph(QtWidgets.QWidget):
         buttonBack.setStyleSheet("background-color: red;")
         buttonBack.setFixedWidth(120)
         buttonBack.setFixedHeight(30)
+        
         buttonBack.clicked.connect(lambda:self.parent.goBackToSelection(self.index))
+        buttonNewWindow = QPushButton()
+        buttonNewWindow.setText("New Window")
+        buttonNewWindow.setFixedWidth(120)
+        buttonNewWindow.setFixedHeight(30)
+        buttonNewWindow.clicked.connect(lambda:self.openInNewWindow())
+        
         self.canvas = CanvasFigure(self, width=5, height=4, dpi=100)
         self.canvas.fig.suptitle('FSR Graph', fontsize=14)
-        self.layout1.addWidget(button)
-        self.layout1.addWidget(self.lbl)
-        self.layout.addLayout(self.layout1)
+        #self.layout1.addWidget(button)
+        if num != 0:
+            self.layout.addLayout(self.layout1)
         self.layout.addWidget(self.canvas)
-        self.layout.addWidget(buttonBack)
         self.layout1.addStretch()
+        self.layout1.addWidget(buttonNewWindow)
+        self.layout1.addWidget(buttonBack)
+        
+        
         self.setLayout(self.layout)
         n_data = 50
         self.xdata = list(range(n_data))
         self.ydata = [random.randint(0, 10) for i in range(n_data)]
         self.update_plot()
-        self.show()
+        
 
         # Setup a timer to trigger the redraw by calling update_plot.
         self.timer = QtCore.QTimer()
         self.timer.setInterval(100)
         self.timer.timeout.connect(self.update_plot)
         self.timer.start()
+        
+
+
+    def openInNewWindow(self):
+        self.w1 = DifferentWindows(self.parent, 1)
 
     
-    def dialog(self):
-        file , check = QtWidgets.QFileDialog.getOpenFileName(None, "QFileDialog.getOpenFileName()",
-                                                "", "All Files (*)")
-        if check:
-            self.lbl.setText(file)
+    
 
 
     def update_plot(self):
@@ -172,12 +220,17 @@ class graphImage(QWidget):
         self.visibleButtons = statusArray
         self.index = index 
         self.parent = p 
+        if num == 0:
+            self.parent.otherWindows.append(self)
         if num == 1: 
             self.height = 700
             self.width = 1000
         elif num == 2:
             self.height = 550
             self.width = 600 
+        elif num == 0:
+            self.width = 1200
+            self.height = 800 
         else:
             self.width = 500
             self.height = 400
@@ -190,23 +243,39 @@ class graphImage(QWidget):
         buttonBack.setFixedWidth(120)
         buttonBack.setFixedHeight(30)
         buttonBack.clicked.connect(lambda:self.parent.goBackToSelection(self.index))
+        buttonNewWindow = QPushButton()
+        buttonNewWindow.setText("New Window")
+        buttonNewWindow.setFixedWidth(120)
+        buttonNewWindow.setFixedHeight(30)
+        buttonNewWindow.clicked.connect(lambda:self.openInNewWindow())
         self.canvas = FigureCanvas(self.fig)
         self.axes = self.fig.add_subplot(111, projection='3d')
         self.layout = QtWidgets.QVBoxLayout(self) 
         buttonLaout = QtWidgets.QHBoxLayout(self) 
+        self.controlLayot = QtWidgets.QHBoxLayout(self) 
         self.text = QCheckBox("Display Labels",self)
         self.text.setChecked(True)
         self.text.stateChanged.connect(self.toggleText)
+        self.controlLayot.addStretch()
+        self.controlLayot.addWidget(buttonNewWindow)
+        self.controlLayot.addWidget(buttonBack)
+        if num != 0:
+            self.layout.addLayout(self.controlLayot)
+        self.layout.addWidget(self.canvas)
+        self.layout.addLayout(buttonLaout)
+        buttonLaout.addStretch()
         buttonLaout.addWidget(self.text)
         self.marks = QCheckBox("Display Marks",self)
+        buttonLaout.addStretch()
         self.marks.setChecked(True)
         self.marks.stateChanged.connect(self.toggleMarks)
         buttonLaout.addWidget(self.marks)
+        buttonLaout.addStretch()
         self.your_mesh = mesh.Mesh.from_file('./stl_meshes/Main.stl')
         self.meshArray = [] 
         self.sensors = []
         self.texts = []
-        self.layout.addLayout(buttonLaout)
+        
         for i in range (12):
             self.meshArray.append(mesh.Mesh.from_file('./stl_meshes/sensor' + str(i+1) + '.stl'))
             self.sensors.append(mplot3d.art3d.Line3DCollection(self.meshArray[i].vectors, colors=(1,0,0,1), facecolors=(1,0,0,1), alpha=1, zorder=1, visible=False))
@@ -218,8 +287,7 @@ class graphImage(QWidget):
         scale = self.your_mesh.points.flatten()
         self.axes.auto_scale_xyz(scale*0.7, scale*0.7, scale*0.7)
         self.axes.set_axis_off()
-        self.layout.addWidget(self.canvas)
-        self.layout.addWidget(buttonBack)
+        
         self.toggleMarks(QtCore.Qt.Checked)
         self.toggleText(QtCore.Qt.Checked)
 
@@ -272,13 +340,28 @@ class graphImage(QWidget):
         self.canvas.draw()
 
     
+    def openInNewWindow(self):
+        print("dsfdsf")
+        self.w1 = DifferentWindows(self.parent, 2, self.visibleButtons)
+
+    
 class Menu(QWidget): 
-    def __init__(self, ap = 1, arm = 1):
-        
+    def __init__(self, ap = 1, arm = 1, mode = 1):
+        self.mode = mode
         super(QWidget, self).__init__()
         self.ap = ap 
         self.arm = arm
-        
+        self.comboBox = QComboBox(self)
+        self.comboBox.addItem("Mode: Live")
+        self.comboBox.addItem("Mode: Recorded")
+
+        if mode == 1:
+            self.comboBox.setCurrentText("Mode: Live")
+        else:
+            self.comboBox.setCurrentText("Mode: Recorded")
+
+        self.comboBox.currentIndexChanged.connect(lambda: self.change())
+
         filler = QLabel('', self)
         filler.resize(200, 70)
         self.setFixedHeight(650)
@@ -287,6 +370,7 @@ class Menu(QWidget):
         sublayout = QtWidgets.QVBoxLayout(self) 
         self.createApLabel()
         self.createArmLabel()
+        layout.addWidget(self.comboBox)
         layout.addWidget(self.appar)
         layout.addWidget(self.armL)
         
@@ -304,7 +388,12 @@ class Menu(QWidget):
             layout.addStretch()
         layout.addWidget(filler)
         
-
+    def change(self):
+        content = self.comboBox.currentText()
+        if content == 'Mode: Live':
+            self.mode = 1 
+        else:
+            self.mode = 2
 
     def createApLabel(self):
         if (self.ap == 1):
@@ -385,23 +474,23 @@ class Add(QWidget):
         self.layout2.addWidget(self.c5)
         self.layout1.addStretch()
 
-    
-        
-
 
 class Window(QWidget):
-    def __init__(self, ap, arm, num = 4):
+    def __init__(self, ap, arm, mode, num = 4):
         super(QWidget, self).__init__()
         #self.showMaximized()
         self.num = num
+        self.otherWindows = [] 
         self.widgetArray = [0,0,0,0]
         self.layoutArray =  [0,0,0,0]
         self.apparatus = ap 
         self.arm = arm
+        self.mode = mode 
         self.setWindowTitle('3dMesh')
         self.Main = QtWidgets.QVBoxLayout(self)
         self.layout = QtWidgets.QHBoxLayout(self)
         self.layout2 = QtWidgets.QHBoxLayout(self)
+        self.layout3 = QtWidgets.QHBoxLayout(self)
         if self.num == 4:
             self.vLayout1 = QtWidgets.QVBoxLayout(self)
             self.vLayout2 = QtWidgets.QVBoxLayout(self)
@@ -410,7 +499,7 @@ class Window(QWidget):
         self.setLayout(self.Main)
         self.ap = ap 
         self.arm = arm
-        self.menu = Menu(ap, arm)
+        self.menu = Menu(ap, arm, mode)
         for i in range(num):
             self.widgetArray[i] = Add(self, i, self.num)
         self.Main.addLayout(self.layout)
@@ -447,19 +536,44 @@ class Window(QWidget):
         self.menu.buttonArray[10].clicked.connect(lambda:self.triggerAnimation(10))
         self.menu.buttonArray[11].clicked.connect(lambda:self.triggerAnimation(11))
         self.menu.buttonArray[12].clicked.connect(lambda:self.triggerAnimation(12))
-        Start = QPushButton(self)
-        Start.setText("Run")
-        Stop = QPushButton(self)
-        Stop.setText("Stop")
-        Start.setFixedHeight(30)
-        Start.setFixedWidth(150)
-        Stop.setFixedHeight(30)
-        Stop.setFixedWidth(150)
-        self.layout2.addStretch()
-        self.layout2.addWidget(Start)
-        self.layout2.addWidget(Stop)
-        self.layout2.addStretch()
+        
+        if self.menu.mode == 1: 
+            Start = QPushButton(self)
+            Start.setText("Run")
+            Stop = QPushButton(self)
+            Stop.setText("Stop")
+            Start.setFixedHeight(30)
+            Start.setFixedWidth(150)
+            Stop.setFixedHeight(30)
+            Stop.setFixedWidth(150)
+            self.layout2.addStretch()
+            self.layout2.addWidget(Start)
+            self.layout2.addWidget(Stop)
+            self.layout2.addStretch()
+        else: 
+            self.progress = QtWidgets.QProgressBar(self)
+            self.progress.setMaximum(100)
+            self.progress.setValue(33)
+            self.layout2.addStretch()
+            self.layout2.addWidget(self.progress)
+            self.layout2.addStretch()
+            self.Main.addLayout(self.layout3)
+            self.Start = QPushButton(self)
+            self.Start.setText("Play")
+            self.Start.clicked.connect(lambda:self.swapButtonText())
+            self.playStatus = 0 
+            self.layout3.addStretch()
+            self.layout3.addWidget(self.Start)
+            self.layout3.addStretch()
 
+
+    def swapButtonText(self):
+        if self.playStatus == 0:
+            self.playStatus = 1
+            self.Start.setText("Stop")
+        else: 
+            self.playStatus = 0
+            self.Start.setText("Play")
 
     def goBack(self, index):
         self.widgetArray[index].deleteLater()

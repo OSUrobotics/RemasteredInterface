@@ -37,7 +37,7 @@ class FirstChoice(QWidget):
         layout.addWidget(self.button3)
         layout.addStretch(1)
         layout.addStretch(1)
-        self.setFixedHeight(250)
+        self.setFixedHeight(200)
 
     
     def select(self, i):
@@ -84,7 +84,7 @@ class SecondChoice(QWidget):
         layout.addWidget(self.button2)
         layout.addStretch(1)
         layout.addStretch(1)
-        self.setFixedHeight(250)
+        self.setFixedHeight(200)
 
     def select(self, i):
        
@@ -101,7 +101,41 @@ class SecondChoice(QWidget):
         
 
 
-        
+class ModeSlection(QtWidgets.QWidget):
+    def __init__(self):
+        super(QWidget, self).__init__() 
+        self.selection = 0
+        layout = QtWidgets.QHBoxLayout(self)
+        self.button1 = QPushButton("Live Mode", self)
+        self.button1.clicked.connect(lambda:self.select(1))
+        self.button1.setFixedHeight(50)
+        self.button1.setFixedWidth(150)
+        self.button2 = QPushButton("Import Mode", self)
+        self.button2.clicked.connect(lambda:self.select(2))
+        self.button2.setFixedHeight(50)
+        self.button2.setFixedWidth(150)
+        layout.addStretch(1)
+        layout.addStretch(1)
+        layout.addWidget(self.button1)
+        layout.addStretch(1)
+        layout.addWidget(self.button2)
+        layout.addStretch(1)
+        layout.addStretch(1)
+        self.setFixedHeight(200)
+
+
+    def select(self, i):
+        self.selection = i
+        self.changeColor(i)
+
+
+    def changeColor(self, i):
+        if (i==1):
+            self.button1.setStyleSheet("background-color : lightgreen")
+            self.button2.setStyleSheet("background-color : light gray")
+        elif (i==2):
+            self.button1.setStyleSheet("background-color : light gray")
+            self.button2.setStyleSheet("background-color : lightgreen")       
        
 
 class FirstPage(QWidget):
@@ -110,16 +144,17 @@ class FirstPage(QWidget):
         self.layout = QtWidgets.QVBoxLayout(self)
         self.p = parent
         
-        self.firstPage()
+        self.initFirstPage()
         
 
-    def firstPage(self):
-        
+    def initFirstPage(self):
         self.F = FirstChoice()
         self.S = SecondChoice()
+        self.C = ModeSlection()
         title = self.createLabel("Equipment Setup", 24)
         wr1Layout = self.createLabel("Select Your Apparatus", 16)
         wr2Layout = self.createLabel("Select Your Arm", 16)
+        wr3Layout = self.createLabel("Select Data Mode", 16)
         fButton = self.outButton()
         self.layout.addLayout(title)
         self.layout.addStretch()
@@ -128,6 +163,9 @@ class FirstPage(QWidget):
         self.layout.addStretch()
         self.layout.addLayout(wr2Layout)
         self.layout.addWidget(self.S)
+        self.layout.addStretch()
+        self.layout.addLayout(wr3Layout)
+        self.layout.addWidget(self.C)
         self.layout.addStretch()
         self.layout.addLayout(fButton)
         self.layout.addStretch()
@@ -159,6 +197,7 @@ class FirstPage(QWidget):
     
 
 
+
     
 class MainPage(QtWidgets.QMainWindow):
     def __init__(self):
@@ -183,13 +222,13 @@ class MainPage(QtWidgets.QMainWindow):
         self.setCentralWidget(self.f)
 
     def changeGrid(self, i):
-        if (self.f.F.selection != 0 and self.f.S.selection != 0):
-            self.setCentralWidget(Window(self.f.F.selection, self.f.S.selection, i))
+        if (self.f.F.selection != 0  and self.f.S.selection != 0  and self.f.C.selection != 0 ):
+            self.setCentralWidget(Window(self.f.F.selection, self.f.S.selection, self.f.C.selection, i))
 
     def changeWidget(self):
       
-        if (self.f.F.selection != 0 and self.f.S.selection != 0):
-            self.setCentralWidget(Window(self.f.F.selection, self.f.S.selection, 2))
+        if (self.f.F.selection != 0 and self.f.S.selection != 0 and self.f.C.selection != 0 ):
+            self.setCentralWidget(Window(self.f.F.selection, self.f.S.selection, self.f.C.selection, 2))
 
 def goToSecondScreen(p):
         p.changeWidget()
