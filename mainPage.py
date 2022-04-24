@@ -1,5 +1,5 @@
 from PyQt5 import QtCore, QtGui, QtWidgets
-from PyQt5.QtWidgets import QWidget, QApplication, QPushButton, QGridLayout, QLabel, QCheckBox, QAction
+from PyQt5.QtWidgets import QWidget, QApplication, QPushButton, QGridLayout, QLabel, QCheckBox, QAction,  QInputDialog, QLineEdit, QFileDialog
 import sys
 import numpy as np
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
@@ -7,6 +7,7 @@ from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as Navigatio
 from PyQt5.QtCore import *
 from PyQt5.QtGui import * 
 from interface import Window
+
 
 
 
@@ -202,11 +203,16 @@ class FirstPage(QWidget):
 class MainPage(QtWidgets.QMainWindow):
     def __init__(self):
         super(QWidget, self).__init__()
+        self.imPath = None 
+        self.exPath = None 
         bar = self.menuBar()
+        self.actionExport = QAction("Export")
+        self.actionImport = QAction("Import")
         file = bar.addMenu("File")
         file.addAction("New")
         file.addAction("Save Setup")
-        file.addAction("Export")
+        file.addAction(self.actionExport)
+        file.addAction(self.actionImport)
         view = bar.addMenu("View")
         self.action1 = QAction("1 Element")
         self.action2 = QAction("2 Elements")
@@ -214,6 +220,8 @@ class MainPage(QtWidgets.QMainWindow):
         view.addAction(self.action1)
         view.addAction(self.action2)
         view.addAction(self.action3)
+        self.actionExport.triggered.connect(lambda:self.setExportPath())
+        self.actionImport.triggered.connect(lambda:self.setImportPath())
         self.action1.triggered.connect(lambda:self.changeGrid(1))
         self.action2.triggered.connect(lambda:self.changeGrid(2))
         self.action3.triggered.connect(lambda:self.changeGrid(4))
@@ -221,14 +229,46 @@ class MainPage(QtWidgets.QMainWindow):
         self.f = FirstPage(self)
         self.setCentralWidget(self.f)
 
+
+    def setExportPath(self): 
+        options = QFileDialog.Options()
+        options |= QFileDialog.DontUseNativeDialog
+        fileName = QFileDialog.getExistingDirectory(self, "Select Directory")
+        if fileName: 
+            self.exPath = fileName
+            print(self.exPath)
+
+
+    def setImportPath(self): 
+        options = QFileDialog.Options()
+        options |= QFileDialog.DontUseNativeDialog
+        fileName, _ = QFileDialog.getOpenFileName(self,"QFileDialog.getOpenFileName()", "","All Files (*);;Python Files (*.py)", options=options)
+        if fileName:
+            print(fileName)
+            self.imPath = fileName
+            print(self.imPath)
+
+
     def changeGrid(self, i):
         if (self.f.F.selection != 0  and self.f.S.selection != 0  and self.f.C.selection != 0 ):
-            self.setCentralWidget(Window(self.f.F.selection, self.f.S.selection, self.f.C.selection, i))
+            self.setCentralWidget(Window(self.f.F.selection, self.f.S.selection, self.f.C.selection, i, self))
 
     def changeWidget(self):
-      
         if (self.f.F.selection != 0 and self.f.S.selection != 0 and self.f.C.selection != 0 ):
-            self.setCentralWidget(Window(self.f.F.selection, self.f.S.selection, self.f.C.selection, 2))
+            self.setCentralWidget(Window(self.f.F.selection, self.f.S.selection, self.f.C.selection, 2, self))
+
+    def changeMode(self, mode):
+        self.f.C.selection = mode
+        self.setCentralWidget(Window(self.f.F.selection, self.f.S.selection, self.f.C.selection, 2, self))
+
+    def changeApparatus(self, mode):
+        self.f.F.selection = mode
+        self.setCentralWidget(Window(self.f.F.selection, self.f.S.selection, self.f.C.selection, 2, self))
+
+    def changeArm(self, mode):
+        self.f.S.selection = mode
+        self.setCentralWidget(Window(self.f.F.selection, self.f.S.selection, self.f.C.selection, 2, self))
+    
 
 def goToSecondScreen(p):
         p.changeWidget()
