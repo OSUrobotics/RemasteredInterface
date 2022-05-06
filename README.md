@@ -6,8 +6,21 @@ Updated Interface Based on PyQt5 library
 ```
 git init 
 git clone https://github.com/OSUrobotics/RemasteredInterface.git master
+```
+
+Interface uses ROS messages and ROS bags
+so do not forget to 
 
 ```
+source devel/setup.bash 
+```
+
+To start interfcace 
+
+```
+python MainPage.py
+```
+
 
 # Custom Elements 
 
