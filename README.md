@@ -11,7 +11,7 @@ git clone https://github.com/OSUrobotics/RemasteredInterface.git master
 
 # Custom Elements 
 
-##GraphDistance
+## GraphDistance
 graphs distance vs time 
 
 p - parent 
@@ -19,7 +19,7 @@ index - location slot
 num - number of slots [1, 2, 4]
 
 
-**Items**
+## Items
 item selection choice for testbed 
 
 p - parent 
@@ -28,7 +28,7 @@ index - location slot
 num - number of slots [1, 2, 4]
 
 
-##GraphFSR
+## GraphFSR
 Graphs FSR sensors data vs time 
 
 p - parent 
@@ -37,7 +37,7 @@ index - location slot
 num - number of slots [1, 2, 4]
 
 
-##graphImage
+## graphImage
 Graphs a 3d Model using pyplot and displays active sensors 
 
 p - parent 
@@ -46,7 +46,7 @@ index - location slot
  num - number of slots [1, 2, 4]
 
 
-##Menu
+## Menu
 Selection between various apparatus, arms, modes and sensors 
 
 ap - active apparatus 
@@ -63,7 +63,7 @@ mode - operational mode
   2 - rRecorded
 
 
-##Add
+## Add
 Selection between dynamic interface elements using + button 
 
 p - parent 
@@ -71,7 +71,7 @@ index - location slot
  num - number of slots [1, 2, 4]
 
 
-##Window
+## Window
 Wrapper class for all other elements in this page 
 maintains dynamic layout
 maintains consistency between various inner elements 
