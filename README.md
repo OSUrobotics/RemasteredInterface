@@ -21,6 +21,19 @@ To start interfcace
 python MainPage.py
 ```
 
+# Dependencies
+
+- numpy
+- matplotlib
+- PyQt5
+- multiprocessing 
+- pandas 
+- uuid 
+
+- ROS packages 
+  - rosbag 
+  - rospy  
+
 
 # Custom Elements 
 
