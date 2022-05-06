@@ -14,7 +14,7 @@ git clone https://github.com/OSUrobotics/RemasteredInterface.git master
 ## GraphDistance
 graphs distance vs time 
 
-Args 
+Arguments
 - p - parent 
 - index - location slot 
 - num - number of slots [1, 2, 4]
@@ -23,6 +23,7 @@ Args
 ## Items
 item selection choice for testbed 
 
+Arguments
 - p - parent 
 - statusArray - current Item selection 
 - index - location slot 
@@ -32,6 +33,7 @@ item selection choice for testbed
 ## GraphFSR
 Graphs FSR sensors data vs time 
 
+Arguments
 - p - parent 
 - statusArray - active FSR sensors 
 - index - location slot 
@@ -41,6 +43,7 @@ Graphs FSR sensors data vs time
 ## graphImage
 Graphs a 3d Model using pyplot and displays active sensors 
 
+Arguments
 - p - parent 
 - statusArray - list of currently active FSR sensors 
 - index - location slot 
@@ -50,6 +53,7 @@ Graphs a 3d Model using pyplot and displays active sensors
 ## Menu
 Selection between various apparatus, arms, modes and sensors 
 
+Arguments
 - ap - active apparatus 
   1. Drawer 
   2. Door 
@@ -67,6 +71,7 @@ Selection between various apparatus, arms, modes and sensors
 ## Add
 Selection between dynamic interface elements using + button 
 
+Arguments
 - p - parent 
 - index - location slot 
 - num - number of slots [1, 2, 4]
@@ -77,6 +82,7 @@ Wrapper class for all other elements in this page
 maintains dynamic layout
 maintains consistency between various inner elements 
 
+Arguments
 - ap - active apparatus 
   1. Drawer 
   2. Door 
