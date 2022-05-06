@@ -53,7 +53,7 @@ Arguments
 - num - number of slots [1, 2, 4]
 
 
-## graphImage
+## GraphImage
 Graphs a 3d Model using pyplot and displays active sensors 
 
 Arguments
