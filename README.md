@@ -11,7 +11,6 @@ git clone https://github.com/OSUrobotics/RemasteredInterface.git master
 
 # Custom Elements 
 
-```
 **GraphDistance** 
 graphs distance vs time 
 
@@ -90,4 +89,3 @@ mode - operational mode
   1 - Live 
   2 - rRecorded
  num - number of slots [1, 2, 4]
-```
