@@ -48,6 +48,14 @@ The main purpose of the interface is to hide all scary ROS and Linux commands un
 ### Main Page 
 ![alt text](https://github.com/OSUrobotics/RemasteredInterface/blob/development/design/MainPage.png)
 
+Design By Sergiy Greblov 
+          Josh Campbell 
+          Ryan Roberts
+          
+Based on Earlier Iteration of the Interface: 
+https://github.com/OSUrobotics/infrastructure-packages/tree/development/new_gui
+   
+
 
 # Custom Elements 
 
