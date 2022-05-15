@@ -35,6 +35,26 @@ python MainPage.py
   - rospy  
 
 
+# Purpose and Design 
+
+The main purpose of the interface is to hide all scary ROS and Linux commands under a more user-friendly environment
+
+### Initial Design concepts 
+
+### First Page
+.. image:: https://github.com/OSUrobotics/RemasteredInterface/blob/development/design/FirstPage.png
+   :height: 100px
+   :width: 200 px
+   :scale: 50 %
+
+### Main Page 
+.. image:: https://github.com/OSUrobotics/RemasteredInterface/blob/development/design/MainPage.png
+   :height: 100px
+   :width: 200 px
+   :scale: 50 %
+
+
+
 # Custom Elements 
 
 ## GraphDistance
