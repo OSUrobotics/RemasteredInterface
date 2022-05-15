@@ -6,7 +6,6 @@ from matplotlib.figure import Figure
 import math
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtWidgets import QComboBox, QWidget, QApplication, QPushButton, QGridLayout, QLabel, QCheckBox, QInputDialog, QLineEdit, QFileDialog
-from PyQt5 import QtCore, QtGui
 import sys
 import numpy as np
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
@@ -111,10 +110,10 @@ class Wrapper(QtWidgets.QWidget):
         if (t == 0):
             self.g = GraphDistance(p, index, num)
         if (t == 1):
-            self.g = Graph(p, status, index, num)
+            self.g = GraphFSR(p, status, index, num)
         if (t == 2):
             
-            self.g = graphImage(p, status, index, num)
+            self.g = GraphImage(p, status, index, num)
         layout1.addStretch()
         layout1.addWidget(self.g)
         layout1.addStretch()
@@ -295,16 +294,58 @@ class ObjectChoice(QtWidgets.QWidget):
         self.setLayout(self.layout)
         self.layout.addLayout(self.layout1)
         self.layout.addLayout(self.layout2)
-        self.layout1.addWidget(self.parent.currentItems[0])
-        self.layout1.addWidget(self.parent.currentItems[1])
-        self.layout2.addWidget(self.parent.currentItems[2])
-        self.layout2.addWidget(self.parent.currentItems[3])
+        self.initItems()
+        self.layout1.addWidget(self.currentItems[0])
+        self.layout1.addWidget(self.currentItems[1])
+        self.layout2.addWidget(self.currentItems[2])
+        self.layout2.addWidget(self.currentItems[3])
+
+
+    def initItems(self): 
+        b1 = QPushButton("objectSelection")
+        b1.setFixedWidth(150)
+        b1.setFixedHeight(150)
+        b1.setText("Object 1")
+        b1.setStyleSheet("background-color: white;")
+        b2 = QPushButton("objectSelection")
+        b2.setFixedWidth(150)
+        b2.setFixedHeight(150)
+        b2.setText("Object 1")
+        b2.setStyleSheet("background-color: white;")
+        b3 = QPushButton("objectSelection")
+        b3.setFixedWidth(150)
+        b3.setFixedHeight(150)
+        b3.setText("Object 3")
+        b3.setStyleSheet("background-color: white;")
+        b4 = QPushButton("objectSelection")
+        b4.setFixedWidth(150)
+        b4.setFixedHeight(150)
+        b4.setText("Object 4")
+        b4.setStyleSheet("background-color: white;")
+        self.currentItems = []
+        self.currentItems.append(b1)
+        self.currentItems.append(b2)
+        self.currentItems.append(b3)
+        self.currentItems.append(b4)
+
+
+        b1.clicked.connect(lambda:self.changeSelection(b1))
+        b2.clicked.connect(lambda:self.changeSelection(b2))
+        b3.clicked.connect(lambda:self.changeSelection(b3))
+        b4.clicked.connect(lambda:self.changeSelection(b4))
+
+
+
+    def changeSelection(self, button):
+        for i in self.currentItems: 
+            i.setStyleSheet("background-color: white;")
+        button.setStyleSheet("background-color: lightgreen;")
         
        
 
 
 # Graph fsr data against time using canvas
-class Graph(QtWidgets.QWidget):
+class GraphFSR(QtWidgets.QWidget):
     def __init__(self, p, statusArray, index, num):
         self.statusArray = statusArray
         self.parent = p
@@ -354,13 +395,7 @@ class Graph(QtWidgets.QWidget):
         self.layout1.addStretch()
         self.layout1.addWidget(buttonNewWindow)
         self.layout1.addWidget(buttonBack)
-        
-        
         self.setLayout(self.layout)
-        
-        
-            
-
         # Setup a timer to trigger the redraw by calling update_plot.
         self.timer = QtCore.QTimer()
         self.timer.setInterval(100)
@@ -373,9 +408,6 @@ class Graph(QtWidgets.QWidget):
         global otherWindows
         otherWindows.append(DifferentWindows(self.parent, 1, self.statusArray))
      
-
-    
-    
 
 
     def update_plot(self):
@@ -466,7 +498,7 @@ class Graph(QtWidgets.QWidget):
         self.canvas.draw()
 
 
-class graphImage(QWidget):
+class GraphImage(QWidget):
     def __init__(self, p, statusArray, index, num):
         super(QWidget, self).__init__()
         self.visibleButtons = statusArray
@@ -762,7 +794,6 @@ class Window(QWidget):
         self.otherWindows = [] 
         self.widgetArray = [0,0,0,0]
         self.currentItems = []
-        self.initItems()
         self.layoutArray =  [0,0,0,0]
         self.apparatus = ap 
         self.arm = arm
@@ -872,44 +903,7 @@ class Window(QWidget):
 
 
 
-    def initItems(self): 
-        b1 = QPushButton("objectSelection")
-        b1.setFixedWidth(150)
-        b1.setFixedHeight(150)
-        b1.setText("Object 1")
-        b1.setStyleSheet("background-color: white;")
-        b2 = QPushButton("objectSelection")
-        b2.setFixedWidth(150)
-        b2.setFixedHeight(150)
-        b2.setText("Object 1")
-        b2.setStyleSheet("background-color: white;")
-        b3 = QPushButton("objectSelection")
-        b3.setFixedWidth(150)
-        b3.setFixedHeight(150)
-        b3.setText("Object 3")
-        b3.setStyleSheet("background-color: white;")
-        b4 = QPushButton("objectSelection")
-        b4.setFixedWidth(150)
-        b4.setFixedHeight(150)
-        b4.setText("Object 4")
-        b4.setStyleSheet("background-color: white;")
-        self.currentItems.append(b1)
-        self.currentItems.append(b2)
-        self.currentItems.append(b3)
-        self.currentItems.append(b4)
-
-
-        b1.clicked.connect(lambda:self.changeSelection(b1))
-        b2.clicked.connect(lambda:self.changeSelection(b2))
-        b3.clicked.connect(lambda:self.changeSelection(b3))
-        b4.clicked.connect(lambda:self.changeSelection(b4))
-
-
-
-    def changeSelection(self, button):
-        for i in self.currentItems: 
-            i.setStyleSheet("background-color: white;")
-        button.setStyleSheet("background-color: lightgreen;")
+    
 
     def increaseByFive(self):
         increase = (self.total_time/100)*5
@@ -1065,7 +1059,7 @@ class Window(QWidget):
 
     def addFSRGraph(self, index):
         self.widgetArray[index].deleteLater()
-        self.widgetArray[index] = Graph(self, self.menu.statusArray, index, self.num)
+        self.widgetArray[index] = GraphFSR(self, self.menu.statusArray, index, self.num)
         self.layoutArray[index].addWidget(self.widgetArray[index])
 
 
@@ -1084,7 +1078,7 @@ class Window(QWidget):
 
     def addModel(self, index):
         self.widgetArray[index].deleteLater()
-        self.widgetArray[index] = graphImage(self, self.menu.statusArray, index, self.num)
+        self.widgetArray[index] = GraphImage(self, self.menu.statusArray, index, self.num)
         self.layoutArray[index].addWidget(self.widgetArray[index])
 
 
@@ -1107,19 +1101,19 @@ class Window(QWidget):
         
         if self.menu.statusArray[index] == 0:
             for i in range(len(self.widgetArray)):
-                if isinstance(self.widgetArray[i], graphImage):
+                if isinstance(self.widgetArray[i], GraphImage):
                     self.widgetArray[i].showMesh(index) 
             self.menu.statusArray[index] = 1
             
             self.menu.buttonArray[index].setStyleSheet("background-color : lightgreen")
         else: 
             for i in range(len(self.widgetArray)):
-                if isinstance(self.widgetArray[i], graphImage):
+                if isinstance(self.widgetArray[i], GraphImage):
                     self.widgetArray[i].hideMesh(index) 
             self.menu.buttonArray[index].setStyleSheet("background-color : light gray")
             self.menu.statusArray[index] = 0
         for i in range(len(self.widgetArray)):
-            if isinstance(self.widgetArray[i], graphImage): 
+            if isinstance(self.widgetArray[i], GraphImage): 
                 self.widgetArray[i].setvisibleButtons(self.menu.statusArray)
 
 
