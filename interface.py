@@ -50,6 +50,9 @@ pid = 0
 # Gets the current working path, which will hopefully prevent issues using './' in paths
 script_path = os.path.dirname(os.path.realpath(__file__))
 
+#sensor_topic = 'sensor_data'
+#sensor_topic = 'hardware_infsensor'
+
 # kill other threads when on exit
 def clean():
     global pid
@@ -653,6 +656,9 @@ class Menu(QWidget):
 
         self.comboBox.currentIndexChanged.connect(lambda: self.change())
 
+
+
+
         filler = QLabel('', self)
         filler.resize(200, 70)
         self.setFixedHeight(650)
@@ -678,6 +684,18 @@ class Menu(QWidget):
             layout.addWidget(self.buttonArray[i])
             layout.addStretch()
         layout.addWidget(filler)
+
+        #Temporary workaround for lack of topic remapping options
+        self.topicBox = QLineEdit(self)
+        self.topicBox.textChanged.connect(self.topicChange)
+        self.topicBox.setText("sensor_data")
+        self.topicLabel = QLabel(self)
+        self.topicLabel.setText("Sensor topic:")
+        layout.addWidget(self.topicLabel)
+        layout.addWidget(self.topicBox)
+
+    def topicChange(self, topic):
+        self.parent.setTopic(topic)
 
     def change(self):
         content = self.comboBox.currentText()
@@ -799,14 +817,14 @@ class Window(QWidget):
         self.layoutArray =  [0,0,0,0]
         self.apparatus = ap
         self.arm = arm
+        self.sensor_topic = ""
+
         global live
 
         if mode == 1:
             live = 1
         else:
             live = 0
-
-
 
         self.mode = mode
         self.setWindowTitle('3dMesh')
@@ -904,7 +922,9 @@ class Window(QWidget):
             self.layout3.addStretch()
 
 
-
+    def setTopic(self, topic):
+        print("Topic set: " + topic)
+        self.sensor_topic = topic
 
 
     def increaseByFive(self):
@@ -926,11 +946,16 @@ class Window(QWidget):
     def stopReading(self):
         self.started = 0
         global bagQueue
-        print(bagQueue)
+        #print(bagQueue)
 
         fileName = str(uuid.uuid4())
         if self.parent.exPath == None:
-            export = script_path + "/../rosbag_records"
+            export = os.path.dirname(script_path) + "/rosbag_records"
+#            export = script_path + "/../rosbag_records"
+            #Creates export directory if it doesn't exist
+            #TODO: Allow argument for export directory
+            if not os.path.isdir(export):
+                os.mkdir(export)
         else:
             export = self.parent.exPath
         self.bag = rosbag.Bag(str(export)+ "/" + str(fileName), 'w')
@@ -972,7 +997,7 @@ class Window(QWidget):
 
     def readData(self):
         rospy.init_node('interface', anonymous=True)
-        rospy.Subscriber("sensor_data", DoorSensors, self.onRead)
+        rospy.Subscriber(self.sensor_topic, DoorSensors, self.onRead)
         rospy.spin()
 
 
@@ -1000,14 +1025,20 @@ class Window(QWidget):
         options = QFileDialog.Options()
         options |= QFileDialog.DontUseNativeDialog
         fileName, _ = QFileDialog.getOpenFileName(self,"QFileDialog.getOpenFileName()", "","All Files (*);;Python Files (*.py)", options=options)
+        print("File found")
         if fileName:
-
-            self.bag  = rosbag.Bag(script_path + '/../rosbag_records/test.bag', 'r')
+            #self.bag  = rosbag.Bag(os.path.dirname(script_path) + '/rosbag_records/test.bag', 'r')
+            self.bag  = rosbag.Bag(fileName, 'r')
             self.t_start = rospy.Time(self.bag.get_start_time())
             t_end   = rospy.Time(self.bag.get_end_time())
             self.total_time = (t_end - self.t_start).to_sec()
             self.bagData = []
-            for topic, msg, t in self.bag.read_messages(topics=['sensor_data']):
+            if not self.sensor_topic[0] == '/':
+                topic = '/' + self.sensor_topic
+            else:
+                topic = self.sensor_topic
+            for topic, msg, t in self.bag.read_messages(topics=[topic]):
+                print(topic)
                 self.bagData.append([msg, t])
 
 
@@ -1018,6 +1049,7 @@ class Window(QWidget):
 
 
     def swapButtonText(self):
+        print("Hit swap button. Play status is " + str(self.playStatus))
         if self.playStatus == -1:
             if (self.openFileNameDialog()):
                 self.Start.setText("Play")
@@ -1031,10 +1063,14 @@ class Window(QWidget):
 
                 self.total_time = (t_end - self.t_start).to_sec()
                 self.bagData = []
-                for topic, msg, t in self.bag.read_messages(topics=['sensor_data']):
+                if not self.sensor_topic[0] == '/':
+                    topic = '/' + self.sensor_topic
+                else:
+                    topic = self.sensor_topic
+                for topic, msg, t in self.bag.read_messages(topics=[topic]):
                     self.bagData.append([msg, t])
                 self.progress.setMaximum(self.total_time)
-                print(self.total_time)
+                #print(self.total_time)
                 self.progress.setValue(0)
 
 
