@@ -247,9 +247,7 @@ class MainPage(QtWidgets.QMainWindow):
         options |= QFileDialog.DontUseNativeDialog
         fileName, _ = QFileDialog.getOpenFileName(self,"QFileDialog.getOpenFileName()", "","All Files (*);;Python Files (*.py)", options=options)
         if fileName:
-            print(fileName)
             self.imPath = fileName
-            print(self.imPath)
 
 
     def changeGrid(self, i):

@@ -56,11 +56,14 @@ script_path = os.path.dirname(os.path.realpath(__file__))
 
 # kill other threads when on exit
 def clean():
-    global pid
-    os.kill(pid, signal.SIGKILL)
+    children = multiprocessing.active_children()
+    for child_thread in children:
+        child_thread.terminate()
+#    global pid
+#    os.kill(pid, signal.SIGKILL)
 
 
-#atexit.register(clean)
+atexit.register(clean)
 
 
 # class for storing the data from sensor_data topic
@@ -143,7 +146,7 @@ class GraphDistance(QtWidgets.QWidget):
             self.height = 800
         else:
             self.width = 500
-            self.height = 400
+            self.height = 350
 
         self.setFixedWidth(self.width)
         self.setFixedHeight(self.height)
@@ -259,7 +262,7 @@ class Items(QtWidgets.QWidget):
             self.height = 800
         else:
             self.width = 500
-            self.height = 400
+            self.height = 350
         self.setFixedWidth(self.width)
         self.setFixedHeight(self.height)
         button = QPushButton()
@@ -368,7 +371,7 @@ class GraphFSR(QtWidgets.QWidget):
             self.height = 800
         else:
             self.width = 500
-            self.height = 400
+            self.height = 350
         self.setFixedWidth(self.width)
         self.setFixedHeight(self.height)
         button = QPushButton()
@@ -523,7 +526,7 @@ class GraphImage(QWidget):
             self.height = 800
         else:
             self.width = 500
-            self.height = 400
+            self.height = 350
         self.setFixedWidth(self.width)
         self.setFixedHeight(self.height)
         self.fig = Figure()
@@ -695,6 +698,10 @@ class Menu(QWidget):
         layout.addWidget(self.topicLabel)
         layout.addWidget(self.topicBox)
 
+        self.refreshButton = QPushButton("Refresh Displayed Topic")
+        self.refreshButton.clicked.connect(self.parent.refreshTopic)
+        layout.addWidget(self.refreshButton)
+
     def topicChange(self, topic):
         self.parent.setTopic(topic)
 
@@ -703,7 +710,7 @@ class Menu(QWidget):
         if content == 'Mode: Live':
             self.parent.parent.changeMode(1)
         else:
-            clean()
+#            clean()
             self.parent.parent.changeMode(2)
 
 
@@ -753,7 +760,7 @@ class Add(QWidget):
             self.width = 600
         else:
             self.width = 500
-            self.height = 400
+            self.height = 350
         self.setFixedWidth(self.width)
         self.setFixedHeight(self.height)
         self.c1 = QPushButton("Distance Graph")
@@ -808,6 +815,7 @@ class Window(QWidget):
         #self.showMaximized()
         self.bag  = None
         self.bagData = []
+        self.bagFilePath = ""
         self.parent = parent
         self.maxValue = 100
         self.currentValue = 0
@@ -819,7 +827,6 @@ class Window(QWidget):
         self.apparatus = ap
         self.arm = arm
         self.sensor_topic = ""
-
         self.subscriberThread = None
 
         global live
@@ -1036,17 +1043,10 @@ class Window(QWidget):
         self.progress.setValue(self.currentValue)
 
 
-
-
-
-    def openFileNameDialog(self):
-        options = QFileDialog.Options()
-        options |= QFileDialog.DontUseNativeDialog
-        fileName, _ = QFileDialog.getOpenFileName(self,"QFileDialog.getOpenFileName()", "","All Files (*);;Python Files (*.py)", options=options)
-        print("File found")
-        if fileName:
+    def refreshTopic(self):
+        if self.menu.mode != 1 and self.bagFilePath:
             #self.bag  = rosbag.Bag(os.path.dirname(script_path) + '/rosbag_records/test.bag', 'r')
-            self.bag  = rosbag.Bag(fileName, 'r')
+            self.bag  = rosbag.Bag(self.bagFilePath, 'r')
             self.t_start = rospy.Time(self.bag.get_start_time())
             t_end   = rospy.Time(self.bag.get_end_time())
             self.total_time = (t_end - self.t_start).to_sec()
@@ -1056,7 +1056,35 @@ class Window(QWidget):
             else:
                 topic = self.sensor_topic
             for topic, msg, t in self.bag.read_messages(topics=[topic]):
-                print(topic)
+                self.bagData.append([msg, t])
+
+        else:
+            if self.subscriberThread != None:
+                if self.subscriberThread.is_alive():
+                    self.subscriberThread.terminate()
+                self.subscriberThread = None
+
+            if self.started == 1:
+                self.subscriberThread = multiprocessing.Process(target=self.readData)
+                self.subscriberThread.start()
+
+    def openFileNameDialog(self):
+        options = QFileDialog.Options()
+        options |= QFileDialog.DontUseNativeDialog
+        self.bagFilePath, _ = QFileDialog.getOpenFileName(self,"QFileDialog.getOpenFileName()", "","All Files (*);;Python Files (*.py)", options=options)
+        if self.bagFilePath:
+            print("Found file")
+            #self.bag  = rosbag.Bag(os.path.dirname(script_path) + '/rosbag_records/test.bag', 'r')
+            self.bag  = rosbag.Bag(self.bagFilePath, 'r')
+            self.t_start = rospy.Time(self.bag.get_start_time())
+            t_end   = rospy.Time(self.bag.get_end_time())
+            self.total_time = (t_end - self.t_start).to_sec()
+            self.bagData = []
+            if len(self.sensor_topic) > 0 and not self.sensor_topic[0] == '/':
+                topic = '/' + self.sensor_topic
+            else:
+                topic = self.sensor_topic
+            for topic, msg, t in self.bag.read_messages(topics=[topic]):
                 self.bagData.append([msg, t])
 
 
@@ -1075,6 +1103,7 @@ class Window(QWidget):
 
         elif self.playStatus == 0:
             if self.bag  == None and self.parent.imPath != None:
+                self.bagFilePath = self.parent.imPath
                 self.bag  = rosbag.Bag(self.parent.imPath, 'r')
                 self.t_start = rospy.Time(self.bag.get_start_time())
                 t_end   = rospy.Time(self.bag.get_end_time())
