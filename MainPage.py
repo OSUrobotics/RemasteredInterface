@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtWidgets import QWidget, QApplication, QPushButton, QGridLayout, QLabel, QCheckBox, QAction,  QInputDialog, QLineEdit, QFileDialog
 import sys
@@ -5,17 +7,17 @@ import numpy as np
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 from PyQt5.QtCore import *
-from PyQt5.QtGui import * 
+from PyQt5.QtGui import *
 from interface import Window
 
 
 
 
-
+#Sets up the PyQt widget for the target object/setup selection
 class FirstChoice(QWidget):
     def __init__(self):
         self.selection = 0
-        super(QWidget, self).__init__() 
+        super(QWidget, self).__init__()
         layout = QtWidgets.QHBoxLayout(self)
         self.button1 = QPushButton("Drawer", self)
         self.button1.clicked.connect(lambda:self.select(1))
@@ -40,9 +42,9 @@ class FirstChoice(QWidget):
         layout.addStretch(1)
         self.setFixedHeight(200)
 
-    
+
     def select(self, i):
-       
+
         self.selection = i
         self.changeColor(i)
 
@@ -60,14 +62,14 @@ class FirstChoice(QWidget):
             self.button1.setStyleSheet("background-color : light gray")
             self.button2.setStyleSheet("background-color : light gray")
 
-    
-
-   
 
 
+
+
+#Sets up the PyQt widget for the specific robot being used
 class SecondChoice(QWidget):
     def __init__(self):
-        super(QWidget, self).__init__() 
+        super(QWidget, self).__init__()
         self.selection = 0
         layout = QtWidgets.QHBoxLayout(self)
         self.button1 = QPushButton("Kinova Jaco2", self)
@@ -88,7 +90,7 @@ class SecondChoice(QWidget):
         self.setFixedHeight(200)
 
     def select(self, i):
-       
+
         self.selection = i
         self.changeColor(i)
 
@@ -99,12 +101,13 @@ class SecondChoice(QWidget):
         elif (i==2):
             self.button1.setStyleSheet("background-color : light gray")
             self.button2.setStyleSheet("background-color : lightgreen")
-        
 
 
+#Creates the PyQt widget to select whether to run the visualization on
+#live data or on recorded rosbags
 class ModeSlection(QtWidgets.QWidget):
     def __init__(self):
-        super(QWidget, self).__init__() 
+        super(QWidget, self).__init__()
         self.selection = 0
         layout = QtWidgets.QHBoxLayout(self)
         self.button1 = QPushButton("Live Mode", self)
@@ -136,18 +139,18 @@ class ModeSlection(QtWidgets.QWidget):
             self.button2.setStyleSheet("background-color : light gray")
         elif (i==2):
             self.button1.setStyleSheet("background-color : light gray")
-            self.button2.setStyleSheet("background-color : lightgreen")       
-       
+            self.button2.setStyleSheet("background-color : lightgreen")
 
+#Sets up the initial GUI page
 class FirstPage(QWidget):
     def __init__(self, parent):
-        super(QWidget, self).__init__(parent) 
+        super(QWidget, self).__init__(parent)
         self.layout = QtWidgets.QVBoxLayout(self)
         self.p = parent
-        
-        self.initFirstPage()
-        
 
+        self.initFirstPage()
+
+    #Sets up the initial state of the main GUI page
     def initFirstPage(self):
         self.F = FirstChoice()
         self.S = SecondChoice()
@@ -195,16 +198,16 @@ class FirstPage(QWidget):
         layout1.addStretch(1)
         return layout1
 
-    
 
 
 
-    
+
+
 class MainPage(QtWidgets.QMainWindow):
     def __init__(self):
         super(QWidget, self).__init__()
-        self.imPath = None 
-        self.exPath = None 
+        self.imPath = None
+        self.exPath = None
         bar = self.menuBar()
         self.actionExport = QAction("Export")
         self.actionImport = QAction("Import")
@@ -230,16 +233,16 @@ class MainPage(QtWidgets.QMainWindow):
         self.setCentralWidget(self.f)
 
 
-    def setExportPath(self): 
+    def setExportPath(self):
         options = QFileDialog.Options()
         options |= QFileDialog.DontUseNativeDialog
         fileName = QFileDialog.getExistingDirectory(self, "Select Directory")
-        if fileName: 
+        if fileName:
             self.exPath = fileName
             print(self.exPath)
 
 
-    def setImportPath(self): 
+    def setImportPath(self):
         options = QFileDialog.Options()
         options |= QFileDialog.DontUseNativeDialog
         fileName, _ = QFileDialog.getOpenFileName(self,"QFileDialog.getOpenFileName()", "","All Files (*);;Python Files (*.py)", options=options)
@@ -268,7 +271,7 @@ class MainPage(QtWidgets.QMainWindow):
     def changeArm(self, mode):
         self.f.S.selection = mode
         self.setCentralWidget(Window(self.f.F.selection, self.f.S.selection, self.f.C.selection, 2, self))
-    
+
 
 def goToSecondScreen(p):
         p.changeWidget()
