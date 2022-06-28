@@ -21,6 +21,7 @@ import atexit
 import signal
 import subprocess
 import multiprocessing
+import threading
 import pandas as pd
 import rosbag
 import uuid
@@ -59,7 +60,7 @@ def clean():
     os.kill(pid, signal.SIGKILL)
 
 
-atexit.register(clean)
+#atexit.register(clean)
 
 
 # class for storing the data from sensor_data topic
@@ -819,6 +820,8 @@ class Window(QWidget):
         self.arm = arm
         self.sensor_topic = ""
 
+        self.subscriberThread = None
+
         global live
 
         if mode == 1:
@@ -923,7 +926,6 @@ class Window(QWidget):
 
 
     def setTopic(self, topic):
-        print("Topic set: " + topic)
         self.sensor_topic = topic
 
 
@@ -937,10 +939,17 @@ class Window(QWidget):
     def startReading(self):
         if self.started == 0:
             self.started = 1
-            global pid
-            pid = os.fork()
-            if pid == 0:
-                self.readData()
+
+            if self.subscriberThread != None:
+                if self.subscriberThread.is_alive():
+                    self.subscriberThread.terminate()
+
+            self.subscriberThread = multiprocessing.Process(target=self.readData)
+            self.subscriberThread.start()
+            #global pid
+            #pid = os.fork()
+            #if pid == 0:
+            #    self.readData()
 
 
     def stopReading(self):
@@ -964,7 +973,12 @@ class Window(QWidget):
             self.writeToBag(data)
 
         self.bag.close()
-        clean()
+
+        if self.subscriberThread != None:
+            if self.subscriberThread.is_alive():
+                self.subscriberThread.terminate()
+            self.subscriberThread = None
+        #clean()
 
 
     def onRead(self, data):
@@ -997,7 +1011,11 @@ class Window(QWidget):
 
     def readData(self):
         rospy.init_node('interface', anonymous=True)
-        rospy.Subscriber(self.sensor_topic, DoorSensors, self.onRead)
+        if len(self.sensor_topic) > 0 and self.sensor_topic[0] == '/':
+            topic = self.sensor_topic[1:]
+        else:
+            topic = self.sensor_topic
+        rospy.Subscriber(topic, DoorSensors, self.onRead)
         rospy.spin()
 
 
@@ -1033,7 +1051,7 @@ class Window(QWidget):
             t_end   = rospy.Time(self.bag.get_end_time())
             self.total_time = (t_end - self.t_start).to_sec()
             self.bagData = []
-            if not self.sensor_topic[0] == '/':
+            if len(self.sensor_topic) > 0 and not self.sensor_topic[0] == '/':
                 topic = '/' + self.sensor_topic
             else:
                 topic = self.sensor_topic
@@ -1063,7 +1081,7 @@ class Window(QWidget):
 
                 self.total_time = (t_end - self.t_start).to_sec()
                 self.bagData = []
-                if not self.sensor_topic[0] == '/':
+                if len(self.sensor_topic) > 0 and not self.sensor_topic[0] == '/':
                     topic = '/' + self.sensor_topic
                 else:
                     topic = self.sensor_topic
