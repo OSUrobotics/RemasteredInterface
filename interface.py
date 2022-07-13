@@ -15,7 +15,9 @@ from PyQt5.QtGui import *
 import matplotlib.animation as animation
 import random
 import rospy
+import rosnode
 from infrastructure_msgs.msg import DoorSensors
+from sensor_msgs.msg import JointState
 import os
 import atexit
 import signal
@@ -24,8 +26,10 @@ import multiprocessing
 import threading
 import pandas as pd
 import rosbag
+import roslaunch
 import uuid
-
+import rviz
+from time import sleep
 
 #live vs recorded
 live = 0
@@ -121,8 +125,9 @@ class Wrapper(QtWidgets.QWidget):
         if (t == 1):
             self.g = GraphFSR(p, status, index, num)
         if (t == 2):
-
             self.g = GraphImage(p, status, index, num)
+        if (t == 3):
+            self.g = RvizWidget(p, index, num, p.top_obj)
         layout1.addStretch()
         layout1.addWidget(self.g)
         layout1.addStretch()
@@ -242,6 +247,143 @@ def update_live(n):
     queue.put(n)
     distanceQueue.put(n)
     bagQueue.put(n)
+
+
+class RvizWidget(QtWidgets.QWidget):
+    def __init__(self, p, index, num, top_obj):
+        self.parent = p
+        self.top_obj = top_obj
+        super(QWidget, self).__init__()
+        self.index = index
+        if num == 1:
+            self.height = 700
+            self.width = 1000
+        elif num == 2:
+            self.height = 550
+            self.width = 600
+        elif num == 0:
+            self.width = 1200
+            self.height = 800
+        else:
+            self.width = 500
+            self.height = 350
+
+        self.setFixedWidth(self.width)
+        self.setFixedHeight(self.height)
+        button = QPushButton()
+        button.setText("Export Path")
+
+        button.setFixedWidth(120)
+        button.setFixedHeight(30)
+        self.layout = QtWidgets.QVBoxLayout(self)
+        self.layout1 =  QtWidgets.QHBoxLayout(self)
+        buttonBack = QPushButton()
+        buttonBack.setText("Remove")
+        buttonBack.setStyleSheet("background-color: red;")
+        buttonBack.setFixedWidth(120)
+        buttonBack.setFixedHeight(30)
+        buttonNewWindow = QPushButton()
+        buttonNewWindow.setText("New Window")
+        buttonNewWindow.setFixedWidth(120)
+        buttonNewWindow.setFixedHeight(30)
+        buttonLoadConfig = QPushButton()
+        buttonLoadConfig.setText("Load Config")
+        buttonLoadConfig.setFixedWidth(120)
+        buttonLoadConfig.setFixedHeight(30)
+        buttonBack.clicked.connect(lambda:self.parent.goBackToSelection(self.index))
+        buttonNewWindow.clicked.connect(lambda:self.openInNewWindow())
+        buttonLoadConfig.clicked.connect(self.changeConfig)
+        self.frame = rviz.VisualizationFrame()
+        self.frame.setSplashPath( "" )
+        self.frame.initialize()
+
+        reader = rviz.YamlConfigReader()
+        config = rviz.Config()
+
+        if self.parent.arm == 1:
+            reader.readFile( config, script_path + "/rviz/kinova_arm_basic.rviz" )
+        else:
+            reader.readFile( config, script_path + "/rviz/blankconfig.rviz" )
+
+        self.frame.load( config )
+
+
+        #Please read before uncommenting:
+        #Attempting to use the "Load Config" button in its current form
+        #with the menu bar hidden results in a segfault. I don't know
+        #what specifically within the rviz source code causes this.
+        #If you really want to try to fix this, I suggest diving more into
+        #the frame manager. I hope to fix this at some point myself, but at
+        #present there are various things that take priority over not having the
+        #menu bar at the top of the widget.
+        #self.frame.setMenuBar( None )
+
+        self.frame.setStatusBar( None )
+        self.frame.setHideButtonVisibility( False )
+        if num != 0:
+            self.layout.addLayout(self.layout1)
+        self.layout.addWidget(self.frame)
+        self.layout1.addStretch()
+        self.layout1.addWidget(buttonLoadConfig)
+        self.layout1.addWidget(buttonNewWindow)
+        self.layout1.addWidget(buttonBack)
+
+        self.setLayout(self.layout)
+
+        if self.parent.arm == 1:
+            self.initializeJaco2()
+
+    def openInNewWindow(self):
+        global otherWindows
+        otherWindows.append(DifferentWindows(self.parent, 3))
+
+    def changeConfig(self):
+
+        options = QFileDialog.Options()
+        options |= QFileDialog.DontUseNativeDialog
+        fname, _ = QFileDialog.getOpenFileName(self, "QFileDialog.getOpenFileName()", script_path + '/rviz',"All Files (*);;rviz configuration files (*.rviz *.myviz)", options=options)
+        print(fname)
+        reader = rviz.YamlConfigReader()
+        config = rviz.Config()
+        reader.readFile( config, fname )
+        print("Read config")
+        self.frame.load( config )
+        print("Loaded config")
+
+    def initializeJaco2(self):
+        rospy.init_node('initial_joint_state_pub', anonymous=True)
+        uuid = roslaunch.rlutil.get_or_generate_uuid(None, False)
+        roslaunch.configure_logging(uuid)
+        launch = roslaunch.parent.ROSLaunchParent(uuid, [script_path + "/launch/display_jaco_2.launch"])
+        launch.start()
+        pub = rospy.Publisher('/j2s7s300_driver/out/joint_state', JointState, queue_size=1)
+
+        initial_message = JointState()
+        initial_message.header.stamp = rospy.Time.now()
+        initial_message.header.frame_id = ''
+        initial_message.name = ["j2s7s300_joint_1",
+                                "j2s7s300_joint_2",
+                                "j2s7s300_joint_3",
+                                "j2s7s300_joint_4",
+                                "j2s7s300_joint_5",
+                                "j2s7s300_joint_6",
+                                "j2s7s300_joint_7",
+                                "j2s7s300_joint_finger_1",
+                                "j2s7s300_joint_finger_tip_1",
+                                "j2s7s300_joint_finger_2",
+                                "j2s7s300_joint_finger_tip_2",
+                                "j2s7s300_joint_finger_3",
+                                "j2s7s300_joint_finger_tip_3"]
+        initial_message.position = [0.0, 3.1415, 3.1415, 3.1415, 0.0, 3.14159265359, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+        initial_message.velocity = []
+        initial_message.effort = []
+
+        rospy.sleep(0.5)
+
+        pub.publish(initial_message)
+
+    def update_joints(self):
+        pass
 
 
 # Widget to select item placed on the testbed
@@ -809,8 +951,9 @@ class Add(QWidget):
 
 
 class Window(QWidget):
-    def __init__(self, ap, arm, mode, num = 4, parent = None):
+    def __init__(self, ap, arm, mode, num = 4, parent = None, top_obj = None):
         super(QWidget, self).__init__()
+        self.top_obj = top_obj
         self.started = 0
         #self.showMaximized()
         self.bag  = None
@@ -1110,12 +1253,19 @@ class Window(QWidget):
 
                 self.total_time = (t_end - self.t_start).to_sec()
                 self.bagData = []
+                self.jointMsgs = []
+                self.jointTopic = ""
                 if len(self.sensor_topic) > 0 and not self.sensor_topic[0] == '/':
-                    topic = '/' + self.sensor_topic
+                    sensor_topic = '/' + self.sensor_topic
                 else:
-                    topic = self.sensor_topic
-                for topic, msg, t in self.bag.read_messages(topics=[topic]):
-                    self.bagData.append([msg, t])
+                    sensor_topic = self.sensor_topic
+                for topic, msg, t in self.bag.read_messages():
+                    if sensor_topic == topic:
+                        self.bagData.append([msg, t])
+                    if "joint_state" in topic:
+                        self.jointTopic = topic
+                        self.jointMsgs.append([msg, t])
+
                 self.progress.setMaximum(self.total_time)
                 #print(self.total_time)
                 self.progress.setValue(0)
@@ -1149,7 +1299,9 @@ class Window(QWidget):
 
 
     def addRviz(self, index):
-        pass
+        self.widgetArray[index].deleteLater()
+        self.widgetArray[index] = RvizWidget(self, index, self.num, self.top_obj)
+        self.layoutArray[index].addWidget(self.widgetArray[index])
 
     def addItems(self, index):
         self.widgetArray[index].deleteLater()

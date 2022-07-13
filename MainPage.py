@@ -206,6 +206,7 @@ class FirstPage(QWidget):
 class MainPage(QtWidgets.QMainWindow):
     def __init__(self):
         super(QWidget, self).__init__()
+        self.top_vars = {}
         self.imPath = None
         self.exPath = None
         bar = self.menuBar()
@@ -252,23 +253,23 @@ class MainPage(QtWidgets.QMainWindow):
 
     def changeGrid(self, i):
         if (self.f.F.selection != 0  and self.f.S.selection != 0  and self.f.C.selection != 0 ):
-            self.setCentralWidget(Window(self.f.F.selection, self.f.S.selection, self.f.C.selection, i, self))
+            self.setCentralWidget(Window(self.f.F.selection, self.f.S.selection, self.f.C.selection, i, self, self))
 
     def changeWidget(self):
         if (self.f.F.selection != 0 and self.f.S.selection != 0 and self.f.C.selection != 0 ):
-            self.setCentralWidget(Window(self.f.F.selection, self.f.S.selection, self.f.C.selection, 2, self))
+            self.setCentralWidget(Window(self.f.F.selection, self.f.S.selection, self.f.C.selection, 2, self, self))
 
     def changeMode(self, mode):
         self.f.C.selection = mode
-        self.setCentralWidget(Window(self.f.F.selection, self.f.S.selection, self.f.C.selection, 2, self))
+        self.setCentralWidget(Window(self.f.F.selection, self.f.S.selection, self.f.C.selection, 2, self, self))
 
     def changeApparatus(self, mode):
         self.f.F.selection = mode
-        self.setCentralWidget(Window(self.f.F.selection, self.f.S.selection, self.f.C.selection, 2, self))
+        self.setCentralWidget(Window(self.f.F.selection, self.f.S.selection, self.f.C.selection, 2, self, self))
 
     def changeArm(self, mode):
         self.f.S.selection = mode
-        self.setCentralWidget(Window(self.f.F.selection, self.f.S.selection, self.f.C.selection, 2, self))
+        self.setCentralWidget(Window(self.f.F.selection, self.f.S.selection, self.f.C.selection, 2, self, self))
 
 
 def goToSecondScreen(p):
