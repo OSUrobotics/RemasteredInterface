@@ -67,13 +67,13 @@ class Wrapper(QtWidgets.QWidget):
         layout.addLayout(layout1)
         layout.addStretch()
         if (t == 0):
-            self.g = GraphDistance(p, index, num, p.top_obj)
+            self.g = GraphDistance(p, index, num, p.main_page)
         if (t == 1):
-            self.g = GraphFSR(p, status, index, num, p.top_obj)
+            self.g = GraphFSR(p, status, index, num, p.main_page)
         if (t == 2):
-            self.g = GraphImage(p, status, index, num, p.top_obj)
+            self.g = GraphImage(p, status, index, num, p.main_page)
         if (t == 3):
-            self.g = RvizWidget(p, index, num, p.top_obj)
+            self.g = RvizWidget(p, index, num, p.main_page)
         layout1.addStretch()
         layout1.addWidget(self.g)
         layout1.addStretch()
@@ -127,10 +127,10 @@ class Items(QtWidgets.QWidget):
 
 # Graph fsr data against time using canvas
 class GraphFSR(QtWidgets.QWidget):
-    def __init__(self, p, statusArray, index, num, top_obj):
+    def __init__(self, p, statusArray, index, num, main_page):
         self.statusArray = statusArray
         self.parent = p
-        self.top_obj = top_obj
+        self.main_page = main_page
         super(QWidget, self).__init__()
         self.index = index
         if num == 1:
@@ -187,7 +187,7 @@ class GraphFSR(QtWidgets.QWidget):
 
 
     def openInNewWindow(self):
-        self.top_obj.top_vars["otherWindows"].append(DifferentWindows(self.parent, 1, self.statusArray))
+        self.main_page.global_vars["otherWindows"].append(DifferentWindows(self.parent, 1, self.statusArray))
 
 
 
@@ -196,54 +196,54 @@ class GraphFSR(QtWidgets.QWidget):
         time = []
         names = []
         i = 0
-        if not self.top_obj.top_vars["live"]:
-            self.top_obj.top_vars["sensorBuffer"] = []
+        if not self.main_page.global_vars["live"]:
+            self.main_page.global_vars["sensorBuffer"] = []
             if len(self.parent.bagData) != 0:
                 while i <= len(self.parent.bagData) -1 and (self.parent.bagData[i][1]-self.parent.t_start).to_sec() < self.parent.currentValue:
                     d = self.parent.bagData[i][0]
-                    self.top_obj.top_vars["sensorBuffer"] = self.top_obj.top_vars["sensorBuffer"] + [Sensors(d.fsr1, d.fsr2, d.fsr3, d.fsr4, d.fsr5, d.fsr6, d.fsr7,
+                    self.main_page.global_vars["sensorBuffer"] = self.main_page.global_vars["sensorBuffer"] + [Sensors(d.fsr1, d.fsr2, d.fsr3, d.fsr4, d.fsr5, d.fsr6, d.fsr7,
                                             d.fsr8, d.fsr9, d.fsr10, d.fsr11, d.fsr12, d.current_time)]
                     i = i+1
 
 
         else:
-            while self.top_obj.top_vars["queue"].empty() == 0:
-                d = self.top_obj.top_vars["queue"].get()
-                self.top_obj.top_vars["sensorBuffer"] = self.top_obj.top_vars["sensorBuffer"] + [Sensors(d.fsr1, d.fsr2, d.fsr3, d.fsr4, d.fsr5, d.fsr6, d.fsr7,
+            while self.main_page.global_vars["queue"].empty() == 0:
+                d = self.main_page.global_vars["queue"].get()
+                self.main_page.global_vars["sensorBuffer"] = self.main_page.global_vars["sensorBuffer"] + [Sensors(d.fsr1, d.fsr2, d.fsr3, d.fsr4, d.fsr5, d.fsr6, d.fsr7,
                                         d.fsr8, d.fsr9, d.fsr10, d.fsr11, d.fsr12, d.current_time)]
 
 
-        l = len(self.top_obj.top_vars["sensorBuffer"])
+        l = len(self.main_page.global_vars["sensorBuffer"])
         bound = min(l, 20)
 
         inner = []
         for i in range (bound):
             inner = []
-            time.append(self.top_obj.top_vars["sensorBuffer"][l-bound+i].time.to_sec())
+            time.append(self.main_page.global_vars["sensorBuffer"][l-bound+i].time.to_sec())
             if self.statusArray[0] == 1:
-                inner = inner + [self.top_obj.top_vars["sensorBuffer"][l-bound+i].fsr1]
+                inner = inner + [self.main_page.global_vars["sensorBuffer"][l-bound+i].fsr1]
             if self.statusArray[1] == 1:
-                inner = inner + [self.top_obj.top_vars["sensorBuffer"][l-bound+i].fsr2]
+                inner = inner + [self.main_page.global_vars["sensorBuffer"][l-bound+i].fsr2]
             if self.statusArray[2] == 1:
-                inner = inner + [self.top_obj.top_vars["sensorBuffer"][l-bound+i].fsr3]
+                inner = inner + [self.main_page.global_vars["sensorBuffer"][l-bound+i].fsr3]
             if self.statusArray[3] == 1:
-                inner = inner + [self.top_obj.top_vars["sensorBuffer"][l-bound+i].fsr4]
+                inner = inner + [self.main_page.global_vars["sensorBuffer"][l-bound+i].fsr4]
             if self.statusArray[4] == 1:
-                inner = inner + [self.top_obj.top_vars["sensorBuffer"][l-bound+i].fsr5]
+                inner = inner + [self.main_page.global_vars["sensorBuffer"][l-bound+i].fsr5]
             if self.statusArray[5] == 1:
-                inner = inner + [self.top_obj.top_vars["sensorBuffer"][l-bound+i].fsr6]
+                inner = inner + [self.main_page.global_vars["sensorBuffer"][l-bound+i].fsr6]
             if self.statusArray[6] == 1:
-                inner = inner + [self.top_obj.top_vars["sensorBuffer"][l-bound+i].fsr7]
+                inner = inner + [self.main_page.global_vars["sensorBuffer"][l-bound+i].fsr7]
             if self.statusArray[7] == 1:
-                inner = inner + [self.top_obj.top_vars["sensorBuffer"][l-bound+i].fsr8]
+                inner = inner + [self.main_page.global_vars["sensorBuffer"][l-bound+i].fsr8]
             if self.statusArray[8] == 1:
-                inner = inner + [self.top_obj.top_vars["sensorBuffer"][l-bound+i].fsr9]
+                inner = inner + [self.main_page.global_vars["sensorBuffer"][l-bound+i].fsr9]
             if self.statusArray[9] == 1:
-                inner = inner + [self.top_obj.top_vars["sensorBuffer"][l-bound+i].fsr10]
+                inner = inner + [self.main_page.global_vars["sensorBuffer"][l-bound+i].fsr10]
             if self.statusArray[10] == 1:
-                inner = inner + [self.top_obj.top_vars["sensorBuffer"][l-bound+i].fsr11]
+                inner = inner + [self.main_page.global_vars["sensorBuffer"][l-bound+i].fsr11]
             if self.statusArray[11] == 1:
-                inner = inner + [self.top_obj.top_vars["sensorBuffer"][l-bound+i].fsr12]
+                inner = inner + [self.main_page.global_vars["sensorBuffer"][l-bound+i].fsr12]
             a.append(inner)
         if self.statusArray[0] == 1:
             names = names + ["FSR1"]
@@ -278,11 +278,11 @@ class GraphFSR(QtWidgets.QWidget):
 
 # canvas and controls for graping Distance against Time
 class GraphDistance(QtWidgets.QWidget):
-    def __init__(self, p, index, num, top_obj):
+    def __init__(self, p, index, num, main_page):
         super(QWidget, self).__init__()
         self.parent = p
         self.index = index
-        self.top_obj = top_obj
+        self.main_page = main_page
         if num == 1:
             self.height = 700
             self.width = 1000
@@ -339,43 +339,43 @@ class GraphDistance(QtWidgets.QWidget):
 
     # update plot in either  live - 0 or recorded - 1 mode
     def update_plot(self):
-        if not self.top_obj.top_vars["live"]:
-            self.top_obj.top_vars["buffer"] = []
-            self.top_obj.top_vars["timeBuffer"] = []
+        if not self.main_page.global_vars["live"]:
+            self.main_page.global_vars["buffer"] = []
+            self.main_page.global_vars["timeBuffer"] = []
             i = 0
             if len(self.parent.bagData) != 0:
                 while  i <= len(self.parent.bagData) -1 and (self.parent.bagData[i][1]-self.parent.t_start).to_sec() < self.parent.currentValue:
                     d = self.parent.bagData[i][0]
-                    self.top_obj.top_vars["buffer"] = self.top_obj.top_vars["buffer"] + [d.tof]
-                    self.top_obj.top_vars["timeBuffer"] = self.top_obj.top_vars["timeBuffer"] + [d.current_time.to_sec()]
+                    self.main_page.global_vars["buffer"] = self.main_page.global_vars["buffer"] + [d.tof]
+                    self.main_page.global_vars["timeBuffer"] = self.main_page.global_vars["timeBuffer"] + [d.current_time.to_sec()]
                     i = i+1
 
         else:
-            while not self.top_obj.top_vars["distanceQueue"].empty():
-                d = self.top_obj.top_vars["distanceQueue"].get()
-                self.top_obj.top_vars["buffer"] = self.top_obj.top_vars["buffer"] + [d.tof]
-                self.top_obj.top_vars["timeBuffer"] = self.top_obj.top_vars["timeBuffer"] + [d.current_time.to_sec()]
+            while not self.main_page.global_vars["distanceQueue"].empty():
+                d = self.main_page.global_vars["distanceQueue"].get()
+                self.main_page.global_vars["buffer"] = self.main_page.global_vars["buffer"] + [d.tof]
+                self.main_page.global_vars["timeBuffer"] = self.main_page.global_vars["timeBuffer"] + [d.current_time.to_sec()]
 
 
         self.canvas.axes.cla()
-        if len(self.top_obj.top_vars["buffer"]) != 0:
-            df = pd.DataFrame(self.top_obj.top_vars["buffer"], self.top_obj.top_vars["timeBuffer"], columns = ["Distance"])
+        if len(self.main_page.global_vars["buffer"]) != 0:
+            df = pd.DataFrame(self.main_page.global_vars["buffer"], self.main_page.global_vars["timeBuffer"], columns = ["Distance"])
             df.plot(ax = self.canvas.axes)
         self.canvas.draw()
 
 
     # open the widget in a new window
     def openInNewWindow(self):
-        self.top_obj.top_vars["otherWindows"].append(DifferentWindows(self.parent, 0))
+        self.main_page.global_vars["otherWindows"].append(DifferentWindows(self.parent, 0))
 
 
 class GraphImage(QWidget):
-    def __init__(self, p, statusArray, index, num, top_obj):
+    def __init__(self, p, statusArray, index, num, main_page):
         super(QWidget, self).__init__()
         self.visibleButtons = statusArray
         self.index = index
         self.parent = p
-        self.top_obj = top_obj
+        self.main_page = main_page
         if num == 0:
             self.parent.otherWindows.append(self)
         if num == 1:
@@ -427,13 +427,13 @@ class GraphImage(QWidget):
         self.marks.stateChanged.connect(self.toggleMarks)
         buttonLaout.addWidget(self.marks)
         buttonLaout.addStretch()
-        self.your_mesh = mesh.Mesh.from_file(self.top_obj.top_vars["package_dir"] + '/stl_meshes/Main.stl')
+        self.your_mesh = mesh.Mesh.from_file(self.main_page.global_vars["package_dir"] + '/stl_meshes/Main.stl')
         self.meshArray = []
         self.sensors = []
         self.texts = []
 
         for i in range (12):
-            self.meshArray.append(mesh.Mesh.from_file(self.top_obj.top_vars["package_dir"] + '/stl_meshes/sensor' + str(i+1) + '.stl'))
+            self.meshArray.append(mesh.Mesh.from_file(self.main_page.global_vars["package_dir"] + '/stl_meshes/sensor' + str(i+1) + '.stl'))
             self.sensors.append(mplot3d.art3d.Line3DCollection(self.meshArray[i].vectors, colors=(1,0,0,1), facecolors=(1,0,0,1), alpha=1, zorder=1, visible=False))
             self.axes.add_collection3d(self.sensors[i])
             self.texts.append(self.axes.text3D(self.meshArray[i].vectors[0][1][0],self.meshArray[i].vectors[0][1][1],self.meshArray[i].vectors[0][1][2],  "sensor #" + str(i+1),  visible=False))
@@ -497,13 +497,13 @@ class GraphImage(QWidget):
 
 
     def openInNewWindow(self):
-        self.top_obj.top_vars["otherWindows"].append(DifferentWindows(self.parent, 2, self.visibleButtons))
+        self.main_page.global_vars["otherWindows"].append(DifferentWindows(self.parent, 2, self.visibleButtons))
 
 class RvizWidget(QtWidgets.QWidget):
-    def __init__(self, p, index, num, top_obj):
+    def __init__(self, p, index, num, main_page):
         super(QWidget, self).__init__()
         self.parent = p
-        self.top_obj = top_obj
+        self.main_page = main_page
         self.index = index
         if num == 1:
             self.height = 700
@@ -550,10 +550,10 @@ class RvizWidget(QtWidgets.QWidget):
         reader = rviz.YamlConfigReader()
         config = rviz.Config()
 
-        if self.top_obj.top_vars["arm"] is "kinova":
-            reader.readFile( config, self.top_obj.top_vars["package_dir"] + "/rviz/kinova_arm_basic.rviz" )
+        if self.main_page.global_vars["arm"] is "kinova":
+            reader.readFile( config, self.main_page.global_vars["package_dir"] + "/rviz/kinova_arm_basic.rviz" )
         else:
-            reader.readFile( config, self.top_obj.top_vars["package_dir"] + "/rviz/blankconfig.rviz" )
+            reader.readFile( config, self.main_page.global_vars["package_dir"] + "/rviz/blankconfig.rviz" )
 
         self.frame.load( config )
 
@@ -580,17 +580,17 @@ class RvizWidget(QtWidgets.QWidget):
 
         self.setLayout(self.layout)
 
-        if self.top_obj.top_vars["arm"] is "kinova":
+        if self.main_page.global_vars["arm"] is "kinova":
             self.initializeJaco2()
 
     def openInNewWindow(self):
-        self.top_obj.top_vars["otherWindows"].append(DifferentWindows(self.parent, 3))
+        self.main_page.global_vars["otherWindows"].append(DifferentWindows(self.parent, 3))
 
     def changeConfig(self):
 
         options = QFileDialog.Options()
         options |= QFileDialog.DontUseNativeDialog
-        fname, _ = QFileDialog.getOpenFileName(self, "QFileDialog.getOpenFileName()", self.top_obj.top_vars["package_dir"] + '/rviz',"All Files (*);;rviz configuration files (*.rviz *.myviz)", options=options)
+        fname, _ = QFileDialog.getOpenFileName(self, "QFileDialog.getOpenFileName()", self.main_page.global_vars["package_dir"] + '/rviz',"All Files (*);;rviz configuration files (*.rviz *.myviz)", options=options)
         print(fname)
         reader = rviz.YamlConfigReader()
         config = rviz.Config()
@@ -600,36 +600,36 @@ class RvizWidget(QtWidgets.QWidget):
         print("Loaded config")
 
     def initializeJaco2(self):
-        rospy.init_node('initial_joint_state_pub', anonymous=True)
         uuid = roslaunch.rlutil.get_or_generate_uuid(None, False)
         roslaunch.configure_logging(uuid)
-        launch = roslaunch.parent.ROSLaunchParent(uuid, [self.top_obj.top_vars["package_dir"] + "/launch/display_jaco_2.launch"])
+        launch = roslaunch.parent.ROSLaunchParent(uuid, [self.main_page.global_vars["package_dir"] + "/launch/display_jaco_2.launch"])
         launch.start()
-        pub = rospy.Publisher('/j2s7s300_driver/out/joint_state', JointState, queue_size=1)
+        #pub = rospy.Publisher('/j2s7s300_driver/out/joint_state', JointState, queue_size=1)
 
-        initial_message = JointState()
-        initial_message.header.stamp = rospy.Time.now()
-        initial_message.header.frame_id = ''
-        initial_message.name = ["j2s7s300_joint_1",
-                                "j2s7s300_joint_2",
-                                "j2s7s300_joint_3",
-                                "j2s7s300_joint_4",
-                                "j2s7s300_joint_5",
-                                "j2s7s300_joint_6",
-                                "j2s7s300_joint_7",
-                                "j2s7s300_joint_finger_1",
-                                "j2s7s300_joint_finger_tip_1",
-                                "j2s7s300_joint_finger_2",
-                                "j2s7s300_joint_finger_tip_2",
-                                "j2s7s300_joint_finger_3",
-                                "j2s7s300_joint_finger_tip_3"]
-        initial_message.position = [0.0, 3.1415, 3.1415, 3.1415, 0.0, 3.14159265359, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-        initial_message.velocity = []
-        initial_message.effort = []
+        #initial_message = JointState()
+        #initial_message.header.stamp = rospy.Time.now()
+        #initial_message.header.frame_id = ''
+        #initial_message.name = ["j2s7s300_joint_1",
+        #                        "j2s7s300_joint_2",
+        #                        "j2s7s300_joint_3",
+        #                        "j2s7s300_joint_4",
+        #                        "j2s7s300_joint_5",
+        #                        "j2s7s300_joint_6",
+        #                        "j2s7s300_joint_7",
+        #                        "j2s7s300_joint_finger_1",
+        #                        "j2s7s300_joint_finger_tip_1",
+        #                        "j2s7s300_joint_finger_2",
+        #                        "j2s7s300_joint_finger_tip_2",
+        #                        "j2s7s300_joint_finger_3",
+        #                        "j2s7s300_joint_finger_tip_3"]
+        #initial_message.position = [0.0, 3.1415, 3.1415, 3.1415, 0.0, 3.14159265359, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+        #initial_message.velocity = []
+        #initial_message.effort = []
 
-        rospy.sleep(0.3)
+        #rospy.sleep(0.5)
 
-        pub.publish(initial_message)
+        #pub.publish(initial_message)
+        #rospy.spin()
 
     def update_joints(self):
         pass

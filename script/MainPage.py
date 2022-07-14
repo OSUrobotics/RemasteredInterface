@@ -11,15 +11,16 @@ from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 from interface import Window
 from sensor import Sensors
+import rospy
 import os
 
 
 
 #Sets up the PyQt widget for the target object/setup selection
 class ApparatusSelection(QWidget):
-    def __init__(self, top_obj):
+    def __init__(self, main_page):
         super(QWidget, self).__init__()
-        self.top_obj = top_obj
+        self.main_page = main_page
         layout = QtWidgets.QHBoxLayout(self)
         self.button1 = QPushButton("Drawer", self)
         self.button1.clicked.connect(lambda:self.select("drawer"))
@@ -46,7 +47,7 @@ class ApparatusSelection(QWidget):
 
 
     def select(self, app):
-        self.top_obj.top_vars["apparatus"] = app
+        self.main_page.global_vars["apparatus"] = app
         self.changeColor(app)
 
     def changeColor(self, app):
@@ -66,9 +67,9 @@ class ApparatusSelection(QWidget):
 
 #Sets up the PyQt widget for the specific robot being used
 class ArmSelection(QWidget):
-    def __init__(self, top_obj):
+    def __init__(self, main_page):
         super(QWidget, self).__init__()
-        self.top_obj = top_obj
+        self.main_page = main_page
         layout = QtWidgets.QHBoxLayout(self)
         self.button1 = QPushButton("Kinova Jaco2", self)
         self.button1.clicked.connect(lambda:self.select("kinova"))
@@ -88,7 +89,7 @@ class ArmSelection(QWidget):
         self.setFixedHeight(200)
 
     def select(self, arm):
-        self.top_obj.top_vars["arm"] = arm
+        self.main_page.global_vars["arm"] = arm
         self.changeColor(arm)
 
     def changeColor(self, arm):
@@ -103,9 +104,9 @@ class ArmSelection(QWidget):
 #Creates the PyQt widget to select whether to run the visualization on
 #live data or on recorded rosbags
 class ModeSelection(QtWidgets.QWidget):
-    def __init__(self, top_obj):
+    def __init__(self, main_page):
         super(QWidget, self).__init__()
-        self.top_obj = top_obj
+        self.main_page = main_page
         layout = QtWidgets.QHBoxLayout(self)
         self.button1 = QPushButton("Live Mode", self)
         self.button1.clicked.connect(lambda:self.select(True))
@@ -125,7 +126,7 @@ class ModeSelection(QtWidgets.QWidget):
         self.setFixedHeight(200)
 
     def select(self, is_live):
-        self.top_obj.top_vars["live"] = is_live
+        self.main_page.global_vars["live"] = is_live
         self.changeColor(is_live)
 
     def changeColor(self, is_live):
@@ -139,14 +140,14 @@ class ModeSelection(QtWidgets.QWidget):
 
 #Sets up the initial GUI page
 class FirstPage(QWidget):
-    def __init__(self, parent, top_obj):
+    def __init__(self, parent, main_page):
         super(QWidget, self).__init__(parent)
-        self.top_obj = top_obj
+        self.main_page = main_page
         self.layout = QtWidgets.QVBoxLayout(self)
         self.p = parent
-        self.apparatusSelect = ApparatusSelection(self.top_obj)
-        self.armSelect = ArmSelection(self.top_obj)
-        self.modeSelect = ModeSelection(self.top_obj)
+        self.apparatusSelect = ApparatusSelection(self.main_page)
+        self.armSelect = ArmSelection(self.main_page)
+        self.modeSelect = ModeSelection(self.main_page)
         title = self.createLabel("Equipment Setup", 24)
         wr1Layout = self.createLabel("Select Your Apparatus", 16)
         wr2Layout = self.createLabel("Select Your Arm", 16)
@@ -182,7 +183,7 @@ class FirstPage(QWidget):
     def outButton(self):
         layout1 = QtWidgets.QHBoxLayout()
         button1 = QPushButton("Finish Setup", self)
-        button1.clicked.connect(lambda:self.top_obj.goToSecondScreen())
+        button1.clicked.connect(lambda:self.main_page.goToSecondScreen())
         button1.setFixedHeight(30)
         button1.setFixedWidth(150)
         layout1.addStretch(1)
@@ -194,7 +195,7 @@ class FirstPage(QWidget):
 class MainPage(QtWidgets.QMainWindow):
     def __init__(self):
         super(QWidget, self).__init__()
-        self.top_vars = {
+        self.global_vars = {
             "queue" : multiprocessing.Queue(),
             "distanceQueue" : multiprocessing.Queue(),
             "bagQueue" : multiprocessing.Queue(),
@@ -254,34 +255,34 @@ class MainPage(QtWidgets.QMainWindow):
 
 
     def changeGrid(self, i):
-        self.top_vars["item_count"] = i
-        if self.top_vars["apparatus"] != ""  and self.top_vars["arm"] != "" and self.top_vars["live"] != None:
-            self.setCentralWidget(Window(self.top_vars["apparatus"], self.top_vars["arm"], self.top_vars["live"], self.top_vars["item_count"], self, self))
+        self.global_vars["item_count"] = i
+        if self.global_vars["apparatus"] != ""  and self.global_vars["arm"] != "" and self.global_vars["live"] != None:
+            self.setCentralWidget(Window(self.global_vars["apparatus"], self.global_vars["arm"], self.global_vars["live"], self.global_vars["item_count"], self, self))
 
     def changeWidget(self):
-        if self.top_vars["apparatus"] != ""  and self.top_vars["arm"] != "" and self.top_vars["live"] != None:
-            self.setCentralWidget(Window(self.top_vars["apparatus"], self.top_vars["arm"], self.top_vars["live"], self.top_vars["item_count"], self, self))
+        if self.global_vars["apparatus"] != ""  and self.global_vars["arm"] != "" and self.global_vars["live"] != None:
+            self.setCentralWidget(Window(self.global_vars["apparatus"], self.global_vars["arm"], self.global_vars["live"], self.global_vars["item_count"], self, self))
 
     def changeMode(self, is_live):
-        self.top_vars["live"] = is_live
-        self.setCentralWidget(Window(self.top_vars["apparatus"], self.top_vars["arm"], self.top_vars["live"], self.top_vars["item_count"], self, self))
+        self.global_vars["live"] = is_live
+        self.setCentralWidget(Window(self.global_vars["apparatus"], self.global_vars["arm"], self.global_vars["live"], self.global_vars["item_count"], self, self))
 
     def changeApparatus(self, app_number):
         if app_number == 0:
-            self.top_vars["apparatus"] = "drawer"
+            self.global_vars["apparatus"] = "drawer"
         elif app_number == 1:
-            self.top_vars["apparatus"] = "door"
+            self.global_vars["apparatus"] = "door"
         else:
-            self.top_vars["apparatus"] = "testBed"
+            self.global_vars["apparatus"] = "testBed"
 
-        self.setCentralWidget(Window(self.top_vars["apparatus"], self.top_vars["arm"], self.top_vars["live"], self.top_vars["item_count"], self, self))
+        self.setCentralWidget(Window(self.global_vars["apparatus"], self.global_vars["arm"], self.global_vars["live"], self.global_vars["item_count"], self, self))
 
     def changeArm(self, arm_number):
         if arm_number == 0:
-            self.top_vars["arm"] = "kinova"
+            self.global_vars["arm"] = "kinova"
         else:
-            self.top_vars["arm"] = "thor"
-        self.setCentralWidget(Window(self.top_vars["apparatus"], self.top_vars["arm"], self.top_vars["live"], self.top_vars["item_count"], self, self))
+            self.global_vars["arm"] = "thor"
+        self.setCentralWidget(Window(self.global_vars["apparatus"], self.global_vars["arm"], self.global_vars["live"], self.global_vars["item_count"], self, self))
 
 
     def goToSecondScreen(self):
@@ -290,6 +291,7 @@ class MainPage(QtWidgets.QMainWindow):
 
 
 if __name__ == '__main__':
+    rospy.init_node('infrastructure_project_gui_node', anonymous=True)
     app = QApplication(sys.argv)
     main = MainPage()
     main.show()

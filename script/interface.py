@@ -59,10 +59,10 @@ atexit.register(clean)
 
 
 class Menu(QWidget):
-    def __init__(self, ap = 1, arm = 1, mode = 1, parent = None, top_obj = None):
+    def __init__(self, ap = 1, arm = 1, mode = 1, parent = None, main_page = None):
         self.parent = parent
         self.mode = mode
-        self.top_obj = top_obj
+        self.main_page = main_page
         super(QWidget, self).__init__()
         self.ap = ap
         self.arm = arm
@@ -122,10 +122,10 @@ class Menu(QWidget):
     def change(self):
         content = self.comboBox.currentText()
         if content == 'Mode: Live':
-            self.top_obj.changeMode(True)
+            self.main_page.changeMode(True)
         else:
 #            clean()
-            self.top_obj.changeMode(False)
+            self.main_page.changeMode(False)
 
 
     def createApLabel(self):
@@ -143,10 +143,10 @@ class Menu(QWidget):
 
 
     def changeApparatus(self, index):
-        self.top_obj.changeApparatus(index)
+        self.main_page.changeApparatus(index)
 
     def changeArm(self, index):
-        self.top_obj.changeArm(index)
+        self.main_page.changeArm(index)
 
 
     def createArmLabel(self):
@@ -162,11 +162,11 @@ class Menu(QWidget):
 
 
 class Add(QWidget):
-    def __init__(self, p, index, num, top_obj):
+    def __init__(self, p, index, num, main_page):
         super(QWidget, self).__init__()
         self.parent = p
         self.index = index
-        self.top_obj = top_obj
+        self.main_page = main_page
         if num == 1:
             self.height = 700
             self.width = 1000
@@ -194,7 +194,7 @@ class Add(QWidget):
         self.layout.addStretch()
         self.layout.addLayout(self.layout1)
         self.button = QPushButton("", self)
-        self.button.setStyleSheet("border-image: url(" + self.top_obj.top_vars["package_dir"] + "/src/plus.png);")
+        self.button.setStyleSheet("border-image: url(" + self.main_page.global_vars["package_dir"] + "/src/plus.png);")
         self.button.setFixedWidth(64)
         self.button.setFixedHeight(64)
         self.button.clicked.connect(lambda:self.switchToS())
@@ -283,9 +283,9 @@ class ObjectChoice(QtWidgets.QWidget):
 
 
 class Window(QWidget):
-    def __init__(self, ap, arm, mode, num = 4, parent = None, top_obj = None):
+    def __init__(self, ap, arm, mode, num = 4, parent = None, main_page = None):
         super(QWidget, self).__init__()
-        self.top_obj = top_obj
+        self.main_page = main_page
         self.started = 0
         #self.showMaximized()
         self.bag  = None
@@ -305,9 +305,9 @@ class Window(QWidget):
         self.subscriberThread = None
 
         if mode == 1:
-            self.top_obj.top_vars["live"] = True
+            self.main_page.global_vars["live"] = True
         else:
-            self.top_obj.top_vars["live"] = False
+            self.main_page.global_vars["live"] = False
 
         self.mode = mode
         self.setWindowTitle('3dMesh')
@@ -323,9 +323,9 @@ class Window(QWidget):
         self.setLayout(self.Main)
         self.ap = ap
         self.arm = arm
-        self.menu = Menu(ap, arm, mode, self, self.top_obj)
+        self.menu = Menu(ap, arm, mode, self, self.main_page)
         for i in range(num):
-            self.widgetArray[i] = Add(self, i, self.num, self.top_obj)
+            self.widgetArray[i] = Add(self, i, self.num, self.main_page)
         self.Main.addLayout(self.layout)
         self.layout.addWidget(self.menu)
         if self.num == 4:
@@ -438,7 +438,7 @@ class Window(QWidget):
 
         fileName = str(uuid.uuid4())
         if self.parent.exPath == None:
-            export = os.path.dirname(self.top_obj.top_vars["package_dir"]) + "/rosbag_records"
+            export = os.path.dirname(self.main_page.global_vars["package_dir"]) + "/rosbag_records"
 #            export = script_path + "/../rosbag_records"
             #Creates export directory if it doesn't exist
             #TODO: Allow argument for export directory
@@ -447,8 +447,8 @@ class Window(QWidget):
         else:
             export = self.parent.exPath
         self.bag = rosbag.Bag(str(export)+ "/" + str(fileName), 'w')
-        while self.top_obj.top_vars["bagQueue"].empty() == 0:
-            data = self.top_obj.top_vars["bagQueue"].get()
+        while self.main_page.global_vars["bagQueue"].empty() == 0:
+            data = self.main_page.global_vars["bagQueue"].get()
             self.writeToBag(data)
 
         self.bag.close()
@@ -461,9 +461,9 @@ class Window(QWidget):
 
 
     def onRead(self, data):
-        self.top_obj.top_vars["queue"].put(data)
-        self.top_obj.top_vars["distanceQueue"].put(data)
-        self.top_obj.top_vars["bagQueue"].put(data)
+        self.main_page.global_vars["queue"].put(data)
+        self.main_page.global_vars["distanceQueue"].put(data)
+        self.main_page.global_vars["bagQueue"].put(data)
 
 
     def writeToBag(self, data):
@@ -611,25 +611,25 @@ class Window(QWidget):
 
     def goBack(self, index):
         self.widgetArray[index].deleteLater()
-        self.widgetArray[index] = Add(self, index, self.num, self.top_obj)
+        self.widgetArray[index] = Add(self, index, self.num, self.main_page)
         self.layoutArray[index].addWidget(self.widgetArray[index])
 
 
     def addDistanceGraph(self, index):
         self.widgetArray[index].deleteLater()
-        self.widgetArray[index] = GraphDistance(self, index, self.num, self.top_obj)
+        self.widgetArray[index] = GraphDistance(self, index, self.num, self.main_page)
         self.layoutArray[index].addWidget(self.widgetArray[index])
 
 
     def addFSRGraph(self, index):
         self.widgetArray[index].deleteLater()
-        self.widgetArray[index] = GraphFSR(self, self.menu.statusArray, index, self.num, self.top_obj)
+        self.widgetArray[index] = GraphFSR(self, self.menu.statusArray, index, self.num, self.main_page)
         self.layoutArray[index].addWidget(self.widgetArray[index])
 
 
     def addRviz(self, index):
         self.widgetArray[index].deleteLater()
-        self.widgetArray[index] = RvizWidget(self, index, self.num, self.top_obj)
+        self.widgetArray[index] = RvizWidget(self, index, self.num, self.main_page)
         self.layoutArray[index].addWidget(self.widgetArray[index])
 
     def addItems(self, index):
@@ -637,20 +637,20 @@ class Window(QWidget):
         for i in range (len(self.widgetArray)):
             if isinstance(self.widgetArray[i], Items):
                 self.widgetArray[i].deleteLater()
-                self.widgetArray[i] = Add(self, i, self.num, self.top_obj)
+                self.widgetArray[i] = Add(self, i, self.num, self.main_page)
                 self.layoutArray[i].addWidget(self.widgetArray[i])
         self.widgetArray[index] = Items(self, self.menu.statusArray, index, self.num)
         self.layoutArray[index].addWidget(self.widgetArray[index])
 
     def addModel(self, index):
         self.widgetArray[index].deleteLater()
-        self.widgetArray[index] = GraphImage(self, self.menu.statusArray, index, self.num, self.top_obj)
+        self.widgetArray[index] = GraphImage(self, self.menu.statusArray, index, self.num, self.main_page)
         self.layoutArray[index].addWidget(self.widgetArray[index])
 
 
     def goBackToSelection(self, index):
         self.widgetArray[index].deleteLater()
-        self.widgetArray[index] = Add(self, index, self.num, self.top_obj)
+        self.widgetArray[index] = Add(self, index, self.num, self.main_page)
         self.layoutArray[index].addWidget(self.widgetArray[index])
 
 
