@@ -16,6 +16,7 @@ import matplotlib.animation as animation
 import random
 import rospy
 import rosnode
+from std_msgs.msg import Header
 from infrastructure_msgs.msg import DoorSensors
 from sensor_msgs.msg import JointState
 from sensor import Sensors
@@ -105,19 +106,35 @@ class Menu(QWidget):
 
         #Temporary workaround for lack of topic remapping options
         self.topicBox = QLineEdit(self)
-        self.topicBox.textChanged.connect(self.topicChange)
-        self.topicBox.setText("sensor_data")
+        self.topicBox.textChanged.connect(self.sensorTopicChange)
+        self.topicBox.setText(self.main_page.global_vars["sensor_data_topic"])
         self.topicLabel = QLabel(self)
         self.topicLabel.setText("Sensor topic:")
+        #Temporary workaround for lack of topic remapping options
+        self.jointTopicBox = QLineEdit(self)
+        self.jointTopicBox.textChanged.connect(self.jointsTopicChange)
+        self.jointTopicBox.setText(self.main_page.global_vars["joint_state_topic"])
+        self.jointTopicLabel = QLabel(self)
+        self.jointTopicLabel.setText("Joint states topic:")
+
         layout.addWidget(self.topicLabel)
         layout.addWidget(self.topicBox)
+        layout.addWidget(self.jointTopicLabel)
+        layout.addWidget(self.jointTopicBox)
 
         self.refreshButton = QPushButton("Refresh Displayed Topic")
         self.refreshButton.clicked.connect(self.parent.refreshTopic)
         layout.addWidget(self.refreshButton)
 
-    def topicChange(self, topic):
-        self.parent.setTopic(topic)
+        self.saveConfigButton = QPushButton("Save Configuration")
+        self.saveConfigButton.clicked.connect(self.main_page.saveConfig)
+        layout.addWidget(self.saveConfigButton)
+
+    def sensorTopicChange(self, topic):
+        self.main_page.global_vars["sensor_data_topic"] = topic
+
+    def jointsTopicChange(self, topic):
+        self.main_page.global_vars["joint_state_topic"] = topic
 
     def change(self):
         content = self.comboBox.currentText()
@@ -287,6 +304,7 @@ class Window(QWidget):
         super(QWidget, self).__init__()
         self.main_page = main_page
         self.started = 0
+        self.total_time = 0
         #self.showMaximized()
         self.bag  = None
         self.bagData = []
@@ -301,7 +319,6 @@ class Window(QWidget):
         self.layoutArray =  [0,0,0,0]
         self.apparatus = ap
         self.arm = arm
-        self.sensor_topic = ""
         self.subscriberThread = None
 
         if mode == 1:
@@ -404,36 +421,34 @@ class Window(QWidget):
             self.layout3.addWidget(self.Right)
             self.layout3.addStretch()
 
-
-    def setTopic(self, topic):
-        self.sensor_topic = topic
-
-
-    def increaseByFive(self):
-        increase = (self.total_time/100)*5
-        self.currentValue = self.currentValue + increase
-        if self.currentValue > self.total_time:
-            self.currentValue = self.total_time
-        self.progress.setValue(self.currentValue)
+        self.createSensorSubscriber()
+        self.createJointsSubscriber()
+        self.initializeJaco2()
 
     def startReading(self):
-        if self.started == 0:
-            self.started = 1
+        if self.main_page.global_vars["sensor_subscriber"] != None:
+            if not self.main_page.global_vars["sensor_data_topic"] is self.main_page.global_vars["sensor_subscriber"].resolved_name:
+                self.main_page.global_vars["sensor_subscriber"].unregister()
+                self.createSensorSubscriber()
+        else:
+            self.createSensorSubscriber()
 
-            if self.subscriberThread != None:
-                if self.subscriberThread.is_alive():
-                    self.subscriberThread.terminate()
 
-            self.subscriberThread = multiprocessing.Process(target=self.readData)
-            self.subscriberThread.start()
+
+            #if self.subscriberThread != None:
+            #    if self.subscriberThread.is_alive():
+            #        self.subscriberThread.terminate()
+
+            #self.subscriberThread = multiprocessing.Process(target=self.createSensorSubscriber)
+            #self.subscriberThread.start()
             #global pid
             #pid = os.fork()
             #if pid == 0:
-            #    self.readData()
+            #    self.createSensorSubscriber()
 
 
     def stopReading(self):
-        self.started = 0
+        #self.started = 0
         #print(bagQueue)
 
         fileName = str(uuid.uuid4())
@@ -453,14 +468,19 @@ class Window(QWidget):
 
         self.bag.close()
 
-        if self.subscriberThread != None:
-            if self.subscriberThread.is_alive():
-                self.subscriberThread.terminate()
-            self.subscriberThread = None
         #clean()
 
+    def republishJoints(self, data):
+        new_header = Header()
+        new_header.stamp = rospy.Time.now()
+        data.header = new_header
+        self.main_page.global_vars["joints_publisher"].publish(data)
 
     def onRead(self, data):
+        new_header = Header()
+        new_header.stamp = rospy.Time.now()
+        data.header = new_header
+        self.main_page.global_vars["sensor_publisher"].publish(data)
         self.main_page.global_vars["queue"].put(data)
         self.main_page.global_vars["distanceQueue"].put(data)
         self.main_page.global_vars["bagQueue"].put(data)
@@ -487,20 +507,44 @@ class Window(QWidget):
         self.bag.write("sensor_data",  msg, msg.current_time)
 
 
-
-    def readData(self):
-        rospy.init_node('interface', anonymous=True)
-        if len(self.sensor_topic) > 0 and self.sensor_topic[0] == '/':
-            topic = self.sensor_topic[1:]
+    def createSensorSubscriber(self):
+        if len(self.main_page.global_vars["sensor_data_topic"]) > 0 and self.main_page.global_vars["sensor_data_topic"][0] == '/':
+            topic = self.main_page.global_vars["sensor_data_topic"][1:]
         else:
-            topic = self.sensor_topic
-        rospy.Subscriber(topic, DoorSensors, self.onRead)
-        rospy.spin()
+            topic = self.main_page.global_vars["sensor_data_topic"]
+        if self.main_page.global_vars["sensor_subscriber"] != None:
+            self.main_page.global_vars["sensor_subscriber"].unregister()
+            self.main_page.global_vars["sensor_subscriber"] = None
+        self.main_page.global_vars["sensor_subscriber"] = rospy.Subscriber(topic, DoorSensors, self.onRead)
 
+    def createJointsSubscriber(self):
+        if len(self.main_page.global_vars["joint_state_topic"]) > 0 and self.main_page.global_vars["joint_state_topic"][0] == '/':
+            topic = self.main_page.global_vars["joint_state_topic"][1:]
+        else:
+            topic = self.main_page.global_vars["joint_state_topic"]
+        if self.main_page.global_vars["joints_subscriber"] != None:
+            self.main_page.global_vars["joints_subscriber"].unregister()
+            self.main_page.global_vars["joints_subscriber"] = None
+        self.main_page.global_vars["joints_subscriber"] = rospy.Subscriber(topic, JointState, self.republishJoints)
 
+    def initializeJaco2(self):
+        if self.main_page.global_vars["robot_state_publisher"] != None:
+            return
+        uuid = roslaunch.rlutil.get_or_generate_uuid(None, False)
+        roslaunch.configure_logging(uuid)
+        self.main_page.global_vars["robot_state_publisher"] = roslaunch.parent.ROSLaunchParent(uuid, [self.main_page.global_vars["package_dir"] + "/launch/display_jaco_2.launch"])
+        self.main_page.global_vars["robot_state_publisher"].start()
 
+    def increaseByFive(self):
+        #self.main_page.resetRvizTimes()
+        increase = (self.total_time/100)*5
+        self.currentValue = self.currentValue + increase
+        if self.currentValue > self.total_time:
+            self.currentValue = self.total_time
+        self.progress.setValue(self.currentValue)
 
     def decreasebyFive(self):
+        #self.main_page.resetRvizTimes()
         increase = (self.total_time/100)*5
         self.currentValue = self.currentValue - increase
         if (self.currentValue < 0):
@@ -516,29 +560,20 @@ class Window(QWidget):
 
 
     def refreshTopic(self):
-        if self.menu.mode != 1 and self.bagFilePath:
-            #self.bag  = rosbag.Bag(os.path.dirname(script_path) + '/rosbag_records/test.bag', 'r')
-            self.bag  = rosbag.Bag(self.bagFilePath, 'r')
-            self.t_start = rospy.Time(self.bag.get_start_time())
-            t_end   = rospy.Time(self.bag.get_end_time())
-            self.total_time = (t_end - self.t_start).to_sec()
-            self.bagData = []
-            if len(self.sensor_topic) > 0 and not self.sensor_topic[0] == '/':
-                topic = '/' + self.sensor_topic
-            else:
-                topic = self.sensor_topic
-            for topic, msg, t in self.bag.read_messages(topics=[topic]):
-                self.bagData.append([msg, t])
-
+        if self.main_page.global_vars["sensor_subscriber"] != None:
+            if not self.main_page.global_vars["sensor_data_topic"] is self.main_page.global_vars["sensor_subscriber"].resolved_name:
+                self.main_page.global_vars["sensor_subscriber"].unregister()
+                self.createSensorSubscriber()
         else:
-            if self.subscriberThread != None:
-                if self.subscriberThread.is_alive():
-                    self.subscriberThread.terminate()
-                self.subscriberThread = None
+            self.createSensorSubscriber()
 
-            if self.started == 1:
-                self.subscriberThread = multiprocessing.Process(target=self.readData)
-                self.subscriberThread.start()
+        if self.main_page.global_vars["joints_subscriber"] != None:
+            if not self.main_page.global_vars["joint_state_topic"] is self.main_page.global_vars["joints_subscriber"].resolved_name:
+                self.main_page.global_vars["joints_subscriber"].unregister()
+                self.createJointsSubscriber()
+        else:
+            self.createJointsSubscriber()
+
 
     def openFileNameDialog(self):
         options = QFileDialog.Options()
@@ -552,10 +587,10 @@ class Window(QWidget):
             t_end   = rospy.Time(self.bag.get_end_time())
             self.total_time = (t_end - self.t_start).to_sec()
             self.bagData = []
-            if len(self.sensor_topic) > 0 and not self.sensor_topic[0] == '/':
-                topic = '/' + self.sensor_topic
+            if len(self.main_page.global_vars["sensor_data_topic"]) > 0 and not self.main_page.global_vars["sensor_data_topic"][0] == '/':
+                topic = '/' + self.main_page.global_vars["sensor_data_topic"]
             else:
-                topic = self.sensor_topic
+                topic = self.main_page.global_vars["sensor_data_topic"]
             for topic, msg, t in self.bag.read_messages(topics=[topic]):
                 self.bagData.append([msg, t])
 
@@ -571,7 +606,7 @@ class Window(QWidget):
         if self.playStatus == -1:
             if (self.openFileNameDialog()):
                 self.Start.setText("Play")
-                self.playStatus = 0;
+                self.playStatus = 0
 
         elif self.playStatus == 0:
             if self.bag  == None and self.parent.imPath != None:
@@ -584,10 +619,10 @@ class Window(QWidget):
                 self.bagData = []
                 self.jointMsgs = []
                 self.jointTopic = ""
-                if len(self.sensor_topic) > 0 and not self.sensor_topic[0] == '/':
-                    sensor_topic = '/' + self.sensor_topic
+                if len(self.main_page.global_vars["sensor_data_topic"]) > 0 and not self.main_page.global_vars["sensor_data_topic"][0] == '/':
+                    sensor_topic = '/' + self.main_page.global_vars["sensor_data_topic"]
                 else:
-                    sensor_topic = self.sensor_topic
+                    sensor_topic = self.main_page.global_vars["sensor_data_topic"]
                 for topic, msg, t in self.bag.read_messages():
                     if sensor_topic == topic:
                         self.bagData.append([msg, t])
@@ -601,6 +636,7 @@ class Window(QWidget):
 
 
             if self.bag != None:
+                #self.main_page.resetRvizTimes()
                 self.playStatus = 1
                 self.timer.start()
                 self.Start.setText("Stop")
@@ -631,6 +667,7 @@ class Window(QWidget):
         self.widgetArray[index].deleteLater()
         self.widgetArray[index] = RvizWidget(self, index, self.num, self.main_page)
         self.layoutArray[index].addWidget(self.widgetArray[index])
+        self.main_page.global_vars["rviz_instances"].append(self.widgetArray[index])
 
     def addItems(self, index):
         self.widgetArray[index].deleteLater()
@@ -670,14 +707,19 @@ class Window(QWidget):
                 if isinstance(self.widgetArray[i], GraphImage):
                     self.widgetArray[i].showMesh(index)
             self.menu.statusArray[index] = 1
-
             self.menu.buttonArray[index].setStyleSheet("background-color : lightgreen")
+
+            self.main_page.global_vars["sensors_enabled"].append(index)
+
+
         else:
             for i in range(len(self.widgetArray)):
                 if isinstance(self.widgetArray[i], GraphImage):
                     self.widgetArray[i].hideMesh(index)
             self.menu.buttonArray[index].setStyleSheet("background-color : light gray")
             self.menu.statusArray[index] = 0
+            self.main_page.global_vars["sensors_enabled"].remove(index)
+
         for i in range(len(self.widgetArray)):
             if isinstance(self.widgetArray[i], GraphImage):
                 self.widgetArray[i].setvisibleButtons(self.menu.statusArray)

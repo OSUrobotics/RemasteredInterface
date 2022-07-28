@@ -1,0 +1,10 @@
+{
+  "items" : {},
+  "item_count" : 4,
+  "arm" : "kinova",
+  "apparatus" : "drawer",
+  "mode" : "live",
+  "sensor_data_topic" : "sensor_data",
+  "joint_state_topic" : "joint_states",
+  "sensors_enabled" : []
+}

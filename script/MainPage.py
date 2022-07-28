@@ -11,9 +11,11 @@ from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 from interface import Window
 from sensor import Sensors
+from sensor_msgs.msg import JointState
+from infrastructure_msgs.msg import DoorSensors
 import rospy
 import os
-
+import json
 
 
 #Sets up the PyQt widget for the target object/setup selection
@@ -152,7 +154,7 @@ class FirstPage(QWidget):
         wr1Layout = self.createLabel("Select Your Apparatus", 16)
         wr2Layout = self.createLabel("Select Your Arm", 16)
         wr3Layout = self.createLabel("Select Data Mode", 16)
-        fButton = self.outButton()
+        fButton = self.configRow()
         self.layout.addLayout(title)
         self.layout.addStretch()
         self.layout.addLayout(wr1Layout)
@@ -180,14 +182,20 @@ class FirstPage(QWidget):
         layout1.addStretch(1)
         return layout1
 
-    def outButton(self):
+    def configRow(self):
         layout1 = QtWidgets.QHBoxLayout()
-        button1 = QPushButton("Finish Setup", self)
-        button1.clicked.connect(lambda:self.main_page.goToSecondScreen())
+        button1 = QPushButton("Load Config", self)
+        button1.clicked.connect(lambda:self.main_page.changeConfig())
         button1.setFixedHeight(30)
         button1.setFixedWidth(150)
+        button2 = QPushButton("Finish Setup", self)
+        button2.clicked.connect(lambda:self.main_page.goToSecondScreen())
+        button2.setStyleSheet("background-color: green;")
+        button2.setFixedHeight(30)
+        button2.setFixedWidth(150)
         layout1.addStretch(1)
         layout1.addWidget(button1)
+        layout1.addWidget(button2)
         layout1.addStretch(1)
         return layout1
 
@@ -203,23 +211,48 @@ class MainPage(QtWidgets.QMainWindow):
             "buffer" : [],
             "timeBuffer" : [],
             "otherWindows" : [],
+            "rviz_instances" : [],
+            "sensor_subscriber" : None,
+            "joints_subscriber" : None,
+            "sensor_publisher" : rospy.Publisher("infrastructure_gui/sensor_data", DoorSensors, queue_size=10),
+            "joints_publisher" : rospy.Publisher("infrastructure_gui/joint_states", JointState, queue_size=10),
+            "sensor_data_topic" : "sensor_data",
+            "joint_state_topic" : "joint_states",
             "apparatus" : "",
             "arm" : "",
             "live" : None,
             "item_count" : 2,
+            "robot_state_publisher" : None,
+            "items" : {
+                "item_1" : {
+                    "type" : "none"
+                },
+                "item_2" : {
+                    "type" : "none"
+                },
+                "item_3" : {
+                    "type" : "none"
+                },
+                "item_4" : {
+                    "type" : "none"
+                }
+            },
+            "sensors_enabled" : [],
             "script_path" : os.path.dirname(os.path.realpath(__file__)),
             "package_dir" : os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
         }
         self.imPath = None
         self.exPath = None
         bar = self.menuBar()
+
+        file = bar.addMenu("File")
         self.actionExport = QAction("Export")
         self.actionImport = QAction("Import")
-        file = bar.addMenu("File")
         file.addAction("New")
         file.addAction("Save Setup")
         file.addAction(self.actionExport)
         file.addAction(self.actionImport)
+
         view = bar.addMenu("View")
         self.action1 = QAction("1 Element")
         self.action2 = QAction("2 Elements")
@@ -232,10 +265,10 @@ class MainPage(QtWidgets.QMainWindow):
         self.action1.triggered.connect(lambda:self.changeGrid(1))
         self.action2.triggered.connect(lambda:self.changeGrid(2))
         self.action3.triggered.connect(lambda:self.changeGrid(4))
+
         self.showMaximized()
         self.firstPage = FirstPage(self, self)
         self.setCentralWidget(self.firstPage)
-
 
     def setExportPath(self):
         options = QFileDialog.Options()
@@ -245,14 +278,12 @@ class MainPage(QtWidgets.QMainWindow):
             self.exPath = fileName
             print(self.exPath)
 
-
     def setImportPath(self):
         options = QFileDialog.Options()
         options |= QFileDialog.DontUseNativeDialog
         fileName, _ = QFileDialog.getOpenFileName(self,"QFileDialog.getOpenFileName()", "","All Files (*);;Python Files (*.py)", options=options)
         if fileName:
             self.imPath = fileName
-
 
     def changeGrid(self, i):
         self.global_vars["item_count"] = i
@@ -284,10 +315,49 @@ class MainPage(QtWidgets.QMainWindow):
             self.global_vars["arm"] = "thor"
         self.setCentralWidget(Window(self.global_vars["apparatus"], self.global_vars["arm"], self.global_vars["live"], self.global_vars["item_count"], self, self))
 
-
     def goToSecondScreen(self):
             self.changeWidget()
 
+    def changeConfig(self):
+        options = QFileDialog.Options()
+        options |= QFileDialog.DontUseNativeDialog
+        fname, _ = QFileDialog.getOpenFileName(self, "QFileDialog.getOpenFileName()", self.global_vars["package_dir"] + '/config',"All Files (*);;JSON files (*.json)", options=options)
+        with open(fname) as f:
+            config = json.load(f)
+        for key in config.keys():
+            if key is "mode":
+                if config["mode"] is "live":
+                    self.global_vars["live"] = True
+                else:
+                    self.global_vars["live"] = False
+            else:
+                self.global_vars[key] = config[key]
+
+        self.setCentralWidget(Window(self.global_vars["apparatus"], self.global_vars["arm"], self.global_vars["live"], self.global_vars["item_count"], self, self))
+
+
+    def saveConfig(self):
+        options = QFileDialog.Options()
+        options |= QFileDialog.DontUseNativeDialog
+        fname, _ = QFileDialog.getSaveFileName(self, "QFileDialog.getSaveFileName()", self.global_vars["package_dir"] + '/config',"All Files (*);;JSON files (*.json)", options=options)
+        config = {}
+        config["apparatus"] = self.global_vars["apparatus"]
+        config["arm"] = self.global_vars["arm"]
+        if self.global_vars["live"]:
+            config["mode"] = "live"
+        else:
+            config["mode"] = "rosbag"
+        config["item_count"] = self.global_vars["item_count"]
+        config["items"] = self.global_vars["items"]
+        config["sensor_data_topic"] = self.global_vars["sensor_data_topic"]
+        config["joint_state_topic"] = self.global_vars["joint_state_topic"]
+        config["sensors_enabled"] = self.global_vars["sensors_enabled"]
+        with open(fname, "w+") as f:
+            f.write(json.dumps(config, indent=4))
+
+    def resetRvizTimes(self):
+        for instance in self.global_vars["rviz_instances"]:
+            instance.reset_time()
 
 
 if __name__ == '__main__':

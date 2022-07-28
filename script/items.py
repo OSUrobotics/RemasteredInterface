@@ -540,7 +540,7 @@ class RvizWidget(QtWidgets.QWidget):
         buttonLoadConfig.setText("Load Config")
         buttonLoadConfig.setFixedWidth(120)
         buttonLoadConfig.setFixedHeight(30)
-        buttonBack.clicked.connect(lambda:self.parent.goBackToSelection(self.index))
+        buttonBack.clicked.connect(self.removeSelf)
         buttonNewWindow.clicked.connect(lambda:self.openInNewWindow())
         buttonLoadConfig.clicked.connect(self.changeConfig)
         self.frame = rviz.VisualizationFrame()
@@ -580,30 +580,22 @@ class RvizWidget(QtWidgets.QWidget):
 
         self.setLayout(self.layout)
 
-        if self.main_page.global_vars["arm"] is "kinova":
-            self.initializeJaco2()
+        #if self.main_page.global_vars["arm"] is "kinova":
+            #self.initializeJaco2()
 
     def openInNewWindow(self):
-        self.main_page.global_vars["otherWindows"].append(DifferentWindows(self.parent, 3))
+        new_window = DifferentWindows(self.parent, 3)
+        self.main_page.global_vars["otherWindows"].append(new_window)
+        self.main_page.global_vars["rviz_instances"].append(new_window)
 
     def changeConfig(self):
-
         options = QFileDialog.Options()
         options |= QFileDialog.DontUseNativeDialog
         fname, _ = QFileDialog.getOpenFileName(self, "QFileDialog.getOpenFileName()", self.main_page.global_vars["package_dir"] + '/rviz',"All Files (*);;rviz configuration files (*.rviz *.myviz)", options=options)
-        print(fname)
         reader = rviz.YamlConfigReader()
         config = rviz.Config()
         reader.readFile( config, fname )
-        print("Read config")
         self.frame.load( config )
-        print("Loaded config")
-
-    def initializeJaco2(self):
-        uuid = roslaunch.rlutil.get_or_generate_uuid(None, False)
-        roslaunch.configure_logging(uuid)
-        launch = roslaunch.parent.ROSLaunchParent(uuid, [self.main_page.global_vars["package_dir"] + "/launch/display_jaco_2.launch"])
-        launch.start()
         #pub = rospy.Publisher('/j2s7s300_driver/out/joint_state', JointState, queue_size=1)
 
         #initial_message = JointState()
@@ -631,5 +623,10 @@ class RvizWidget(QtWidgets.QWidget):
         #pub.publish(initial_message)
         #rospy.spin()
 
-    def update_joints(self):
-        pass
+    def reset_time(self):
+        manager = self.frame.getManager()
+        manager.resetTime()
+
+    def removeSelf(self):
+        self.main_page.global_vars["rviz_instances"].remove(self)
+        self.parent.goBackToSelection(self.index)
