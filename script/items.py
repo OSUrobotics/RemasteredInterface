@@ -1,38 +1,15 @@
+import rviz
 from stl import mesh
 from mpl_toolkits import mplot3d
-from matplotlib import pyplot
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg, NavigationToolbar2QT as NavigationToolbar
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
-import math
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtWidgets import QComboBox, QWidget, QApplication, QPushButton, QGridLayout, QLabel, QCheckBox, QInputDialog, QLineEdit, QFileDialog
-import sys
-import numpy as np
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
-import matplotlib.animation as animation
-import random
-import rospy
-import rosnode
 from infrastructure_msgs.msg import DoorSensors
 from sensor_msgs.msg import JointState
-from sensor import Sensors
-from items import *
-import os
-import atexit
-import signal
-import subprocess
-import multiprocessing
-import threading
-import pandas as pd
-import rosbag
-import roslaunch
-import uuid
-import rviz
-from time import sleep
-
 
 
 
@@ -43,6 +20,17 @@ class CanvasFigure(FigureCanvasQTAgg):
         self.fig = Figure(figsize=(width, height), dpi=dpi)
         super(CanvasFigure, self).__init__(self.fig)
         self.axes = self.fig.add_subplot(111)
+        self.legend = None
+        #For distance graph
+        self.line, = self.axes.plot([0],[0])
+        #For FSR graph
+        self.line_arr = []
+        for i in range(12):
+            self.line_arr.append(self.axes.plot([0],[0])[0])
+            self.line_arr[i].set_label("FSR" + str(i + 1))
+
+
+        #self.legend = self.fig.legend()
 
 
 # class for openning a graph in a sep window
@@ -51,8 +39,8 @@ class DifferentWindows(QtWidgets.QMainWindow):
         super(QWidget, self).__init__()
         self.showMaximized()
         self.setWindowTitle('Distance Graph')
-        w = Wrapper(p, status, t, index, num)
-        self.setCentralWidget(w)
+        self.wrapper = Wrapper(p, status, t, index, num)
+        self.setCentralWidget(self.wrapper)
 
 # class wrapper class with the selection of what graph to open and layout structure.
 # Used to setup interface
@@ -67,15 +55,15 @@ class Wrapper(QtWidgets.QWidget):
         layout.addLayout(layout1)
         layout.addStretch()
         if (t == 0):
-            self.g = GraphDistance(p, index, num, p.main_page)
+            self.item = GraphDistance(p, index, num, p.main_page)
         if (t == 1):
-            self.g = GraphFSR(p, status, index, num, p.main_page)
+            self.item = GraphFSR(p, status, index, num, p.main_page)
         if (t == 2):
-            self.g = GraphImage(p, status, index, num, p.main_page)
+            self.item = GraphImage(p, status, index, num, p.main_page)
         if (t == 3):
-            self.g = RvizWidget(p, index, num, p.main_page)
+            self.item = RvizWidget(p, index, num, p.main_page)
         layout1.addStretch()
-        layout1.addWidget(self.g)
+        layout1.addWidget(self.item)
         layout1.addStretch()
 
 # Widget to select item placed on the testbed
@@ -131,6 +119,8 @@ class GraphFSR(QtWidgets.QWidget):
         self.statusArray = statusArray
         self.parent = p
         self.main_page = main_page
+        self.rolling_window_size = 5
+        self.viewing_mode = "rolling"
         super(QWidget, self).__init__()
         self.index = index
         if num == 1:
@@ -147,6 +137,15 @@ class GraphFSR(QtWidgets.QWidget):
             self.height = 350
         self.setFixedWidth(self.width)
         self.setFixedHeight(self.height)
+
+        self.rolling_selection = QComboBox()
+        self.rolling_selection.addItems(["1s", "5s", "10s", "30s", "All"])
+        self.rolling_selection.setFixedHeight(30)
+        self.rolling_selection.setFixedWidth(120)
+        self.rolling_selection.setCurrentIndex(1)
+        self.rolling_selection.currentIndexChanged.connect(self.rollingIndexChanged)
+
+
         button = QPushButton()
         button.setText("Export Path")
 
@@ -170,81 +169,119 @@ class GraphFSR(QtWidgets.QWidget):
 
         self.canvas = CanvasFigure(self, width=5, height=4, dpi=100)
         self.canvas.fig.suptitle('FSR Graph', fontsize=14)
+        self.canvas.legend = self.canvas.fig.legend()
         #self.layout1.addWidget(button)
         if num != 0:
             self.layout.addLayout(self.layout1)
         self.layout.addWidget(self.canvas)
+        self.layout1.addWidget(self.rolling_selection)
         self.layout1.addStretch()
         self.layout1.addWidget(buttonNewWindow)
         self.layout1.addWidget(buttonBack)
         self.setLayout(self.layout)
+
+        self.update()
+
+
         # Setup a timer to trigger the redraw by calling update_plot.
-        self.timer = QtCore.QTimer()
-        self.timer.setInterval(100)
-        self.timer.timeout.connect(self.update_plot)
-        self.timer.start()
+        #self.timer = QtCore.QTimer()
+        #self.timer.setInterval(self.main_page.global_vars["timestep"] * 1000)
+        #self.timer.timeout.connect(self.update)
+        #self.timer.start()
 
 
 
     def openInNewWindow(self):
-        self.main_page.global_vars["otherWindows"].append(DifferentWindows(self.parent, 1, self.statusArray))
+        self.main_page.global_vars["other_windows"].append(DifferentWindows(self.parent, 1, self.statusArray))
 
 
+    def rollingIndexChanged(self, idx):
+        if idx == 0:
+            self.viewing_mode = "rolling"
+            self.rolling_window_size = 1
+        elif idx == 1:
+            self.viewing_mode = "rolling"
+            self.rolling_window_size = 5
+        elif idx == 2:
+            self.viewing_mode = "rolling"
+            self.rolling_window_size = 10
+        elif idx == 3:
+            self.viewing_mode = "rolling"
+            self.rolling_window_size = 30
+        elif idx == 4:
+            self.viewing_mode = "total"
+            self.rolling_window_size = -1
+        self.update()
 
-    def update_plot(self):
-        a = []
-        time = []
+
+    def update(self):
+        if len(self.main_page.global_vars["sensor_buffer"]) < 1:
+            return
+        graph_data = []
+        for i in range(12):
+            graph_data.append([])
+
         names = []
-        i = 0
-        if not self.main_page.global_vars["live"]:
-            self.main_page.global_vars["sensorBuffer"] = []
-            if len(self.parent.bagData) != 0:
-                while i <= len(self.parent.bagData) -1 and (self.parent.bagData[i][1]-self.parent.t_start).to_sec() < self.parent.currentValue:
-                    d = self.parent.bagData[i][0]
-                    self.main_page.global_vars["sensorBuffer"] = self.main_page.global_vars["sensorBuffer"] + [Sensors(d.fsr1, d.fsr2, d.fsr3, d.fsr4, d.fsr5, d.fsr6, d.fsr7,
-                                            d.fsr8, d.fsr9, d.fsr10, d.fsr11, d.fsr12, d.current_time)]
-                    i = i+1
 
-
-        else:
-            while self.main_page.global_vars["queue"].empty() == 0:
-                d = self.main_page.global_vars["queue"].get()
-                self.main_page.global_vars["sensorBuffer"] = self.main_page.global_vars["sensorBuffer"] + [Sensors(d.fsr1, d.fsr2, d.fsr3, d.fsr4, d.fsr5, d.fsr6, d.fsr7,
-                                        d.fsr8, d.fsr9, d.fsr10, d.fsr11, d.fsr12, d.current_time)]
-
-
-        l = len(self.main_page.global_vars["sensorBuffer"])
-        bound = min(l, 20)
+        if self.viewing_mode == "rolling":
+            bound = self.parent.getRollingWindowBound(self.rolling_window_size)
+        elif self.viewing_mode == "total":
+            bound = 0
 
         inner = []
-        for i in range (bound):
+        time_buffer = []
+        max_val = 0
+        for i in range(bound, self.main_page.global_vars["sensor_index"] + 1):
             inner = []
-            time.append(self.main_page.global_vars["sensorBuffer"][l-bound+i].time.to_sec())
+            time_buffer.append(self.main_page.global_vars["sensor_buffer"][i].current_time.to_sec() - self.main_page.global_vars["sensor_buffer"][0].current_time.to_sec())
             if self.statusArray[0] == 1:
-                inner = inner + [self.main_page.global_vars["sensorBuffer"][l-bound+i].fsr1]
+                if self.main_page.global_vars["sensor_buffer"][i].fsr1 > max_val:
+                    max_val = self.main_page.global_vars["sensor_buffer"][i].fsr1
+                graph_data[0].append(self.main_page.global_vars["sensor_buffer"][i].fsr1)
             if self.statusArray[1] == 1:
-                inner = inner + [self.main_page.global_vars["sensorBuffer"][l-bound+i].fsr2]
+                if self.main_page.global_vars["sensor_buffer"][i].fsr2 > max_val:
+                    max_val = self.main_page.global_vars["sensor_buffer"][i].fsr2
+                graph_data[1].append(self.main_page.global_vars["sensor_buffer"][i].fsr2)
             if self.statusArray[2] == 1:
-                inner = inner + [self.main_page.global_vars["sensorBuffer"][l-bound+i].fsr3]
+                if self.main_page.global_vars["sensor_buffer"][i].fsr3 > max_val:
+                    max_val = self.main_page.global_vars["sensor_buffer"][i].fsr3
+                graph_data[2].append(self.main_page.global_vars["sensor_buffer"][i].fsr3)
             if self.statusArray[3] == 1:
-                inner = inner + [self.main_page.global_vars["sensorBuffer"][l-bound+i].fsr4]
+                if self.main_page.global_vars["sensor_buffer"][i].fsr4 > max_val:
+                    max_val = self.main_page.global_vars["sensor_buffer"][i].fsr4
+                graph_data[3].append(self.main_page.global_vars["sensor_buffer"][i].fsr4)
             if self.statusArray[4] == 1:
-                inner = inner + [self.main_page.global_vars["sensorBuffer"][l-bound+i].fsr5]
+                if self.main_page.global_vars["sensor_buffer"][i].fsr5 > max_val:
+                    max_val = self.main_page.global_vars["sensor_buffer"][i].fsr5
+                graph_data[4].append(self.main_page.global_vars["sensor_buffer"][i].fsr5)
             if self.statusArray[5] == 1:
-                inner = inner + [self.main_page.global_vars["sensorBuffer"][l-bound+i].fsr6]
+                if self.main_page.global_vars["sensor_buffer"][i].fsr6 > max_val:
+                    max_val = self.main_page.global_vars["sensor_buffer"][i].fsr6
+                graph_data[5].append(self.main_page.global_vars["sensor_buffer"][i].fsr6)
             if self.statusArray[6] == 1:
-                inner = inner + [self.main_page.global_vars["sensorBuffer"][l-bound+i].fsr7]
+                if self.main_page.global_vars["sensor_buffer"][i].fsr7 > max_val:
+                    max_val = self.main_page.global_vars["sensor_buffer"][i].fsr7
+                graph_data[6].append(self.main_page.global_vars["sensor_buffer"][i].fsr7)
             if self.statusArray[7] == 1:
-                inner = inner + [self.main_page.global_vars["sensorBuffer"][l-bound+i].fsr8]
+                if self.main_page.global_vars["sensor_buffer"][i].fsr8 > max_val:
+                    max_val = self.main_page.global_vars["sensor_buffer"][i].fsr8
+                graph_data[7].append(self.main_page.global_vars["sensor_buffer"][i].fsr8)
             if self.statusArray[8] == 1:
-                inner = inner + [self.main_page.global_vars["sensorBuffer"][l-bound+i].fsr9]
+                if self.main_page.global_vars["sensor_buffer"][i].fsr9 > max_val:
+                    max_val = self.main_page.global_vars["sensor_buffer"][i].fsr9
+                graph_data[8].append(self.main_page.global_vars["sensor_buffer"][i].fsr9)
             if self.statusArray[9] == 1:
-                inner = inner + [self.main_page.global_vars["sensorBuffer"][l-bound+i].fsr10]
+                if self.main_page.global_vars["sensor_buffer"][i].fsr10 > max_val:
+                    max_val = self.main_page.global_vars["sensor_buffer"][i].fsr10
+                graph_data[9].append(self.main_page.global_vars["sensor_buffer"][i].fsr10)
             if self.statusArray[10] == 1:
-                inner = inner + [self.main_page.global_vars["sensorBuffer"][l-bound+i].fsr11]
+                if self.main_page.global_vars["sensor_buffer"][i].fsr11 > max_val:
+                    max_val = self.main_page.global_vars["sensor_buffer"][i].fsr11
+                graph_data[10].append(self.main_page.global_vars["sensor_buffer"][i].fsr11)
             if self.statusArray[11] == 1:
-                inner = inner + [self.main_page.global_vars["sensorBuffer"][l-bound+i].fsr12]
-            a.append(inner)
+                if self.main_page.global_vars["sensor_buffer"][i].fsr12 > max_val:
+                    max_val = self.main_page.global_vars["sensor_buffer"][i].fsr12
+                graph_data[11].append(self.main_page.global_vars["sensor_buffer"][i].fsr12)
         if self.statusArray[0] == 1:
             names = names + ["FSR1"]
         if self.statusArray[1] == 1:
@@ -269,11 +306,28 @@ class GraphFSR(QtWidgets.QWidget):
             names = names + ["FSR11"]
         if self.statusArray[11] == 1:
             names = names + ["FSR12"]
-        self.canvas.axes.cla()
 
-        if  len(inner) != 0:
-            df = pd.DataFrame(a, time, columns = names)
-            df.plot(ax = self.canvas.axes)
+        plot_indices = []
+        for name in names:
+            plot_indices.append(int(name[3:]) - 1)
+
+        self.canvas.legend.remove()
+
+        self.canvas.legend = self.canvas.fig.legend(names)
+
+        self.canvas.axes.set_ybound(lower=0)
+        if self.canvas.axes.get_ybound()[1] < max_val:
+            self.canvas.axes.set_ybound(upper=max_val)
+
+        if len(time_buffer) > 0:
+            self.canvas.axes.set_xbound(lower=time_buffer[0], upper=time_buffer[-1])
+
+        for i in range(12):
+            if i in plot_indices:
+                self.canvas.line_arr[i].set_data(time_buffer, graph_data[i])
+            else:
+                self.canvas.line_arr[i].set_data([0],[0])
+
         self.canvas.draw()
 
 # canvas and controls for graping Distance against Time
@@ -283,6 +337,8 @@ class GraphDistance(QtWidgets.QWidget):
         self.parent = p
         self.index = index
         self.main_page = main_page
+        self.viewing_mode = "rolling"
+        self.rolling_window_size = 5
         if num == 1:
             self.height = 700
             self.width = 1000
@@ -298,6 +354,14 @@ class GraphDistance(QtWidgets.QWidget):
 
         self.setFixedWidth(self.width)
         self.setFixedHeight(self.height)
+
+        self.rolling_selection = QComboBox()
+        self.rolling_selection.addItems(["1s", "5s", "10s", "30s", "All"])
+        self.rolling_selection.setFixedHeight(30)
+        self.rolling_selection.setFixedWidth(120)
+        self.rolling_selection.setCurrentIndex(1)
+        self.rolling_selection.currentIndexChanged.connect(self.rollingIndexChanged)
+
         button = QPushButton()
         button.setText("Export Path")
 
@@ -322,51 +386,91 @@ class GraphDistance(QtWidgets.QWidget):
         if num != 0:
             self.layout.addLayout(self.layout1)
         self.layout.addWidget(self.canvas)
+        self.layout1.addWidget(self.rolling_selection)
         self.layout1.addStretch()
         self.layout1.addWidget(buttonNewWindow)
         self.layout1.addWidget(buttonBack)
 
         self.setLayout(self.layout)
 
-
-
+        self.update()
 
         # Setup a timer to trigger the redraw by calling update_plot.
-        self.timer = QtCore.QTimer()
-        self.timer.setInterval(1000)
-        self.timer.timeout.connect(self.update_plot)
-        self.timer.start()
+        #self.timer = QtCore.QTimer()
+        #self.timer.setInterval(self.main_page.global_vars["timestep"] * 1000)
+        #self.timer.timeout.connect(self.update)
+        #self.timer.start()
+
+    def rollingIndexChanged(self, idx):
+        if idx == 0:
+            self.viewing_mode = "rolling"
+            self.rolling_window_size = 1
+        elif idx == 1:
+            self.viewing_mode = "rolling"
+            self.rolling_window_size = 5
+        elif idx == 2:
+            self.viewing_mode = "rolling"
+            self.rolling_window_size = 10
+        elif idx == 3:
+            self.viewing_mode = "rolling"
+            self.rolling_window_size = 30
+        elif idx == 4:
+            self.viewing_mode = "total"
+            self.rolling_window_size = -1
+        self.update()
 
     # update plot in either  live - 0 or recorded - 1 mode
-    def update_plot(self):
+    def update(self):
+        if len(self.main_page.global_vars["sensor_buffer"]) < 1:
+            return
         if not self.main_page.global_vars["live"]:
-            self.main_page.global_vars["buffer"] = []
-            self.main_page.global_vars["timeBuffer"] = []
-            i = 0
-            if len(self.parent.bagData) != 0:
-                while  i <= len(self.parent.bagData) -1 and (self.parent.bagData[i][1]-self.parent.t_start).to_sec() < self.parent.currentValue:
-                    d = self.parent.bagData[i][0]
-                    self.main_page.global_vars["buffer"] = self.main_page.global_vars["buffer"] + [d.tof]
-                    self.main_page.global_vars["timeBuffer"] = self.main_page.global_vars["timeBuffer"] + [d.current_time.to_sec()]
-                    i = i+1
+            if len(self.main_page.global_vars["sensor_buffer"]) != 0:
+                buffer = []
+                time_buffer = []
+                if self.viewing_mode == "rolling":
+                    bound = self.parent.getRollingWindowBound(self.rolling_window_size)
+                elif self.viewing_mode == "total":
+                    bound = 0
+                min_dist = 0
+                max_dist = 0
+                for d in self.main_page.global_vars["sensor_buffer"][bound:self.main_page.global_vars["sensor_index"]+1]:
+                    buffer.append(d.tof)
+                    min_dist = min(min_dist, d.tof)
+                    max_dist = max(max_dist, d.tof)
+                    time_buffer.append(d.current_time.to_sec() - self.main_page.global_vars["sensor_buffer"][0].current_time.to_sec())
 
         else:
-            while not self.main_page.global_vars["distanceQueue"].empty():
-                d = self.main_page.global_vars["distanceQueue"].get()
-                self.main_page.global_vars["buffer"] = self.main_page.global_vars["buffer"] + [d.tof]
-                self.main_page.global_vars["timeBuffer"] = self.main_page.global_vars["timeBuffer"] + [d.current_time.to_sec()]
+            buffer = []
+            time_buffer = []
+            if self.viewing_mode == "rolling":
+                bound = self.parent.getRollingWindowBound(self.rolling_window_size)
+            elif self.viewing_mode == "total":
+                bound = 0
+            min_dist = 0
+            max_dist = 0
+            for d in self.main_page.global_vars["sensor_buffer"][bound:]:
+                min_dist = min(min_dist, d.tof)
+                max_dist = max(max_dist, d.tof)
+                buffer.append(d.tof)
+                time_buffer.append(d.current_time.to_sec() - self.main_page.global_vars["sensor_buffer"][0].current_time.to_sec())
 
-
-        self.canvas.axes.cla()
-        if len(self.main_page.global_vars["buffer"]) != 0:
-            df = pd.DataFrame(self.main_page.global_vars["buffer"], self.main_page.global_vars["timeBuffer"], columns = ["Distance"])
-            df.plot(ax = self.canvas.axes)
+        if self.canvas.axes.get_ybound()[0] > min_dist:
+            self.canvas.axes.set_ybound(lower=min_dist)
+        if self.canvas.axes.get_ybound()[1] < max_dist:
+            self.canvas.axes.set_ybound(upper=max_dist)
+        if len(time_buffer) > 0:
+            self.canvas.axes.set_xbound(lower=time_buffer[0], upper=time_buffer[-1])
+        if len(buffer) > 0:
+            self.canvas.line.set_data(time_buffer, buffer)
+        else:
+            self.canvas.line.set_data(time_buffer, buffer)
         self.canvas.draw()
+        #self.canvas.show()
 
 
     # open the widget in a new window
     def openInNewWindow(self):
-        self.main_page.global_vars["otherWindows"].append(DifferentWindows(self.parent, 0))
+        self.main_page.global_vars["other_windows"].append(DifferentWindows(self.parent, 0))
 
 
 class GraphImage(QWidget):
@@ -377,7 +481,7 @@ class GraphImage(QWidget):
         self.parent = p
         self.main_page = main_page
         if num == 0:
-            self.parent.otherWindows.append(self)
+            self.parent.other_windows.append(self)
         if num == 1:
             self.height = 700
             self.width = 1000
@@ -497,7 +601,10 @@ class GraphImage(QWidget):
 
 
     def openInNewWindow(self):
-        self.main_page.global_vars["otherWindows"].append(DifferentWindows(self.parent, 2, self.visibleButtons))
+        self.main_page.global_vars["other_windows"].append(DifferentWindows(self.parent, 2, self.visibleButtons))
+
+    def update(self):
+        pass
 
 class RvizWidget(QtWidgets.QWidget):
     def __init__(self, p, index, num, main_page):
@@ -585,43 +692,17 @@ class RvizWidget(QtWidgets.QWidget):
 
     def openInNewWindow(self):
         new_window = DifferentWindows(self.parent, 3)
-        self.main_page.global_vars["otherWindows"].append(new_window)
+        self.main_page.global_vars["other_windows"].append(new_window)
         self.main_page.global_vars["rviz_instances"].append(new_window)
 
     def changeConfig(self):
         options = QFileDialog.Options()
         options |= QFileDialog.DontUseNativeDialog
-        fname, _ = QFileDialog.getOpenFileName(self, "QFileDialog.getOpenFileName()", self.main_page.global_vars["package_dir"] + '/rviz',"All Files (*);;rviz configuration files (*.rviz *.myviz)", options=options)
+        fname, _ = QFileDialog.getOpenFileName(self, "Open RVIZ Config File", self.main_page.global_vars["package_dir"] + '/rviz',"All Files (*);;rviz configuration files (*.rviz *.myviz)", options=options)
         reader = rviz.YamlConfigReader()
         config = rviz.Config()
         reader.readFile( config, fname )
         self.frame.load( config )
-        #pub = rospy.Publisher('/j2s7s300_driver/out/joint_state', JointState, queue_size=1)
-
-        #initial_message = JointState()
-        #initial_message.header.stamp = rospy.Time.now()
-        #initial_message.header.frame_id = ''
-        #initial_message.name = ["j2s7s300_joint_1",
-        #                        "j2s7s300_joint_2",
-        #                        "j2s7s300_joint_3",
-        #                        "j2s7s300_joint_4",
-        #                        "j2s7s300_joint_5",
-        #                        "j2s7s300_joint_6",
-        #                        "j2s7s300_joint_7",
-        #                        "j2s7s300_joint_finger_1",
-        #                        "j2s7s300_joint_finger_tip_1",
-        #                        "j2s7s300_joint_finger_2",
-        #                        "j2s7s300_joint_finger_tip_2",
-        #                        "j2s7s300_joint_finger_3",
-        #                        "j2s7s300_joint_finger_tip_3"]
-        #initial_message.position = [0.0, 3.1415, 3.1415, 3.1415, 0.0, 3.14159265359, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-        #initial_message.velocity = []
-        #initial_message.effort = []
-
-        #rospy.sleep(0.5)
-
-        #pub.publish(initial_message)
-        #rospy.spin()
 
     def reset_time(self):
         manager = self.frame.getManager()
@@ -630,3 +711,6 @@ class RvizWidget(QtWidgets.QWidget):
     def removeSelf(self):
         self.main_page.global_vars["rviz_instances"].remove(self)
         self.parent.goBackToSelection(self.index)
+
+    def update(self):
+        pass

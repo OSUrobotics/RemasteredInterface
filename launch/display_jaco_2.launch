@@ -5,10 +5,4 @@
 	<node pkg="robot_state_publisher" type="robot_state_publisher" name="inf_gui_rob_st_pub" >
       <remap from="joint_states" to="infrastructure_gui/joint_states" />
   </node>
-	<!-- <node name="joint_state_publisher" pkg="joint_state_publisher" type="joint_state_publisher">
-		<remap from="joint_states" to="j2s7s300_driver/out/joint_state" />
-		<param name="zeros/$(arg kinova_robotType)_joint_2" value="3.1415"/>
-		<param name="zeros/$(arg kinova_robotType)_joint_3" value="3.1415"/>
-	  <param name="zeros/$(arg kinova_robotType)_joint_4" value="3.1415"/>
-	</node> -->
 </launch>

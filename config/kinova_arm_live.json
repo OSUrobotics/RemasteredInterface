@@ -1,0 +1,10 @@
+{
+    "sensor_data_topic": "hardware_infsensor", 
+    "apparatus": "drawer", 
+    "joint_state_topic": "j2s7s300_driver/out/joint_state", 
+    "items": {}, 
+    "sensors_enabled": [], 
+    "item_count": 4, 
+    "mode": "live", 
+    "arm": "kinova"
+}

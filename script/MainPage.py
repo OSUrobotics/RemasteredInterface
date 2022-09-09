@@ -1,21 +1,19 @@
 #!/usr/bin/env python
 
+import sys
+import multiprocessing
+import rospy
+import os
+import json
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtWidgets import QWidget, QApplication, QPushButton, QGridLayout, QLabel, QCheckBox, QAction,  QInputDialog, QLineEdit, QFileDialog
-import sys
-import numpy as np
-import multiprocessing
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 from interface import Window
-from sensor import Sensors
 from sensor_msgs.msg import JointState
 from infrastructure_msgs.msg import DoorSensors
-import rospy
-import os
-import json
 
 
 #Sets up the PyQt widget for the target object/setup selection
@@ -205,12 +203,13 @@ class MainPage(QtWidgets.QMainWindow):
         super(QWidget, self).__init__()
         self.global_vars = {
             "queue" : multiprocessing.Queue(),
-            "distanceQueue" : multiprocessing.Queue(),
-            "bagQueue" : multiprocessing.Queue(),
-            "sensorBuffer" : [],
+            "distance_queue" : multiprocessing.Queue(),
+            "bag_queue" : multiprocessing.Queue(),
+            "sensor_buffer" : [],
             "buffer" : [],
-            "timeBuffer" : [],
-            "otherWindows" : [],
+            "joints_buffer" : [],
+            "time_buffer" : [],
+            "other_windows" : [],
             "rviz_instances" : [],
             "sensor_subscriber" : None,
             "joints_subscriber" : None,
@@ -218,11 +217,16 @@ class MainPage(QtWidgets.QMainWindow):
             "joints_publisher" : rospy.Publisher("infrastructure_gui/joint_states", JointState, queue_size=10),
             "sensor_data_topic" : "sensor_data",
             "joint_state_topic" : "joint_states",
+            "sensor_index" : 0,
+            "joints_index" : 0,
             "apparatus" : "",
             "arm" : "",
             "live" : None,
             "item_count" : 2,
             "robot_state_publisher" : None,
+            "current_time" : 0,
+            "bag_end_time" : 0,
+            "timestep" : 0.15, #Timestep is in seconds
             "items" : {
                 "item_1" : {
                     "type" : "none"
@@ -238,10 +242,10 @@ class MainPage(QtWidgets.QMainWindow):
                 }
             },
             "sensors_enabled" : [],
+            "rosbag_file" : "",
             "script_path" : os.path.dirname(os.path.realpath(__file__)),
             "package_dir" : os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
         }
-        self.imPath = None
         self.exPath = None
         bar = self.menuBar()
 
@@ -281,9 +285,9 @@ class MainPage(QtWidgets.QMainWindow):
     def setImportPath(self):
         options = QFileDialog.Options()
         options |= QFileDialog.DontUseNativeDialog
-        fileName, _ = QFileDialog.getOpenFileName(self,"QFileDialog.getOpenFileName()", "","All Files (*);;Python Files (*.py)", options=options)
+        fileName, _ = QFileDialog.getOpenFileName(self,"Select Bag File", "","All Files (*);;Rosbag files (*.bag)", options=options)
         if fileName:
-            self.imPath = fileName
+            self.global_vars["rosbag_file"] = fileName
 
     def changeGrid(self, i):
         self.global_vars["item_count"] = i
@@ -306,14 +310,14 @@ class MainPage(QtWidgets.QMainWindow):
         else:
             self.global_vars["apparatus"] = "testBed"
 
-        self.setCentralWidget(Window(self.global_vars["apparatus"], self.global_vars["arm"], self.global_vars["live"], self.global_vars["item_count"], self, self))
+#        self.setCentralWidget(Window(self.global_vars["apparatus"], self.global_vars["arm"], self.global_vars["live"], self.global_vars["item_count"], self, self))
 
     def changeArm(self, arm_number):
         if arm_number == 0:
             self.global_vars["arm"] = "kinova"
         else:
             self.global_vars["arm"] = "thor"
-        self.setCentralWidget(Window(self.global_vars["apparatus"], self.global_vars["arm"], self.global_vars["live"], self.global_vars["item_count"], self, self))
+#        self.setCentralWidget(Window(self.global_vars["apparatus"], self.global_vars["arm"], self.global_vars["live"], self.global_vars["item_count"], self, self))
 
     def goToSecondScreen(self):
             self.changeWidget()
@@ -321,12 +325,14 @@ class MainPage(QtWidgets.QMainWindow):
     def changeConfig(self):
         options = QFileDialog.Options()
         options |= QFileDialog.DontUseNativeDialog
-        fname, _ = QFileDialog.getOpenFileName(self, "QFileDialog.getOpenFileName()", self.global_vars["package_dir"] + '/config',"All Files (*);;JSON files (*.json)", options=options)
+        fname, _ = QFileDialog.getOpenFileName(self, "Load Configuration File", self.global_vars["package_dir"] + '/config',"All Files (*);;JSON files (*.json)", options=options)
+        if not os.path.exists(fname):
+            return
         with open(fname) as f:
             config = json.load(f)
         for key in config.keys():
-            if key is "mode":
-                if config["mode"] is "live":
+            if key == "mode":
+                if config["mode"] == "live":
                     self.global_vars["live"] = True
                 else:
                     self.global_vars["live"] = False
