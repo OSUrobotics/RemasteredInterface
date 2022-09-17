@@ -1,0 +1,3 @@
+<launch>
+  <node pkg="RemasteredInterface" type="MainPage.py" name="infrastructure_gui"/>
+</launch>

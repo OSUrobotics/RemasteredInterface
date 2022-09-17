@@ -15,26 +15,30 @@ so do not forget to
 source devel/setup.bash
 ```
 
-To start interfcace
+To start interface
 
 ```
-python MainPage.py
+roslaunch RemasteredInterface main_page.launch
 ```
 
 # Dependencies
 
-- numpy
-- numpy-stl
-- matplotlib
-- PyQt5
-- multiprocessing
-- pandas
-- uuid
+- Python packages
+  - numpy-stl
+  - matplotlib
+  - PyQt5
+  - multiprocessing
 
 - ROS packages
   - rosbag
   - rospy  
-
+  - rviz
+  - xacro
+  - kinova_description
+  - robot_state_publisher
+  - std_msgs
+  - sensor_msgs
+  - infrastructure_msgs https://github.com/OSUrobotics/infrastructure_msgs/tree/main
 
 # Purpose and Design
 

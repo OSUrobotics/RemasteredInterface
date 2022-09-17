@@ -1,0 +1,8 @@
+<launch>
+	<arg name="kinova_robotType" default="j2s7s300" />
+	<param name="robot_description" command="$(find xacro)/xacro.py '$(find kinova_description)/urdf/$(arg kinova_robotType)_standalone.xacro'" />
+	<param name="ignore_timestamp" value="true"/>
+	<node pkg="robot_state_publisher" type="robot_state_publisher" name="inf_gui_rob_st_pub" >
+      <remap from="joint_states" to="infrastructure_gui/joint_states" />
+  </node>
+</launch>
