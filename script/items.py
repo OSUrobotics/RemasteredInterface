@@ -16,13 +16,14 @@ from sensor_msgs.msg import JointState
 
 # Wrapper class for generating canvas in the application
 class CanvasFigure(FigureCanvasQTAgg):
-    def __init__(self, parent=None, width=4, height=4, dpi=100):
+    def __init__(self, parent=None, width=4, height=4, dpi=100, line=False):
         self.fig = Figure(figsize=(width, height), dpi=dpi)
         super(CanvasFigure, self).__init__(self.fig)
         self.axes = self.fig.add_subplot(111)
         self.legend = None
         #For distance graph
-        self.line, = self.axes.plot([0],[0])
+        if line:
+            self.line, = self.axes.plot([0],[0])
         #For FSR graph
         self.line_arr = []
         for i in range(12):
@@ -310,6 +311,8 @@ class GraphFSR(QtWidgets.QWidget):
         plot_indices = []
         for name in names:
             plot_indices.append(int(name[3:]) - 1)
+        with open('/root/infrastructure_ws/src/RemasteredInterface/script/test.txt', 'w') as f:
+            f.write(str(plot_indices))
 
         self.canvas.legend.remove()
 
@@ -380,7 +383,7 @@ class GraphDistance(QtWidgets.QWidget):
         buttonNewWindow.setFixedHeight(30)
         buttonBack.clicked.connect(lambda:self.parent.goBackToSelection(self.index))
         buttonNewWindow.clicked.connect(lambda:self.openInNewWindow())
-        self.canvas = CanvasFigure(self, width=5, height=4, dpi=100)
+        self.canvas = CanvasFigure(self, width=5, height=4, dpi=100, line=True)
         self.canvas.fig.suptitle('Distance Graph', fontsize=14)
         #self.layout1.addWidget(button)
         if num != 0:
@@ -465,7 +468,7 @@ class GraphDistance(QtWidgets.QWidget):
         else:
             self.canvas.line.set_data(time_buffer, buffer)
         self.canvas.draw()
-        #self.canvas.show()
+        self.canvas.show()
 
 
     # open the widget in a new window
